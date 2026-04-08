@@ -1,0 +1,31 @@
+# readers.yaml — Multi-reader configuration for daily_report.py (ISSUE-201)
+#
+# Usage:
+#   python3 tools/rss/daily_report.py generate --readers configs/rss/readers.yaml
+#   python3 tools/rss/daily_report.py generate --readers configs/rss/readers.yaml --reader-id david
+#
+# Merge precedence: reader entry > defaults > module-level constants
+# See docs/issues/active/ISSUE-201-daily-report-multi-reader/README.md for full spec.
+
+version: 1
+
+defaults:
+  data_root: "~/.local/deep-daily/legacy-data"
+  topics_pinned: "configs/rss/topics.yaml"
+  topic_dynamic: "~/.local/deep-daily/legacy-data/dynamic-topics.json"
+  profile: "~/.local/deep-daily/legacy-data/reader-profile.yaml"
+  active_systems: "~/.local/deep-daily/legacy-data/active-systems.yaml"
+  kols_static: "~/.local/deep-daily/legacy-data/twitter-kols.json"
+  kols_dynamic: "~/.local/deep-daily/legacy-data/dynamic-kols.json"
+  reported_events_global: "~/.local/deep-daily/legacy-data/reported_events.json"
+  notify:
+    topic_id: "work.rss.daily-report"
+    event_id: "rss_daily_report_ready"
+
+readers:
+  - reader_id: "david"
+    enabled: true
+    # No overrides — uses all defaults (backward compatible with single-reader mode)
+    notify:
+      topic_id: "work.rss.daily-report"
+      dedupe_prefix: "rss_daily_report"

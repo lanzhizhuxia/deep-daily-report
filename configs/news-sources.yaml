@@ -1,0 +1,67 @@
+# configs/rss/news-sources.yaml — 6551 新闻源白名单 (ISSUE-161)
+#
+# 用途：控制 tools/rss/news_6551.py 向 6551 /open/news_search API 传递的 engineTypes.news 过滤列表。
+# 运行时读取：fetch_daily_news() 从本文件加载 enabled=true 的 code 列表。
+# 注意：每日 API 调用硬性上限由 news_6551.py 中的 DAILY_API_CALL_BUDGET 常量控制（当前 = 8），
+#        本文件中的 daily_call_budget 仅作文档说明用途，不影响运行时行为。
+#
+# Source codes 通过以下命令查询（注意 code 大小写严格匹配）：
+#   python3 tools/6551/6551_cli.py news-sources
+#
+# 格式：
+#   code: 6551 平台的 engineTypes 值（传递给 API 的 source code，大小写敏感）
+#   name: 人类可读名称
+#   category: crypto | finance | industry
+#   enabled: true/false（false 时不传入 API 过滤，不会完全禁用；API 无此限制时全源搜索）
+
+# 每日调用预算说明（文档用途，运行时以代码常量为准）
+daily_call_budget: 8  # 与 news_6551.py::DAILY_API_CALL_BUDGET 保持一致
+
+sources:
+  # === 加密核心媒体 ===
+  - code: "Coindesk"
+    name: "CoinDesk"
+    category: crypto
+    enabled: true
+
+  - code: "The Block"
+    name: "The Block"
+    category: crypto
+    enabled: true
+
+  - code: "Blockworks"
+    name: "Blockworks"
+    category: crypto
+    enabled: true
+
+  - code: "Cointelegraph"
+    name: "Cointelegraph"
+    category: crypto
+    enabled: true
+
+  - code: "Decrypt"
+    name: "Decrypt"
+    category: crypto
+    enabled: true
+
+  # === 主流财经媒体（仅加密相关） ===
+  - code: "Bloomberg"
+    name: "Bloomberg"
+    category: finance
+    enabled: true
+
+  - code: "Reuters"
+    name: "Reuters"
+    category: finance
+    enabled: true
+
+  # === 行业专属 ===
+  - code: "A16Z"
+    name: "a16z"
+    category: industry
+    enabled: true
+
+  - code: "Binance"
+    name: "Binance Official"
+    category: industry
+    enabled: true

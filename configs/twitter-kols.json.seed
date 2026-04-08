@@ -1,0 +1,1345 @@
+{
+  "_comment": "Twitter KOL whitelist (ISSUE-084/095). Handles are case-insensitive. Groups: binance/crypto/btc/solana/base/ethereum/exchange = Binance WS stream; ai-kol-en/ai-kol-cn/ai-kol/ai-lab/ai-tool/ai-coding = Brave Search supplement (tweet-ai-fetch.py).",
+  "kols": [
+    {
+      "handle": "cz_binance",
+      "group": "binance",
+      "note": "CZ, Binance founder"
+    },
+    {
+      "handle": "heyibinance",
+      "group": "binance",
+      "note": "He Yi, Binance co-founder"
+    },
+    {
+      "handle": "brian_armstrong",
+      "group": "exchange",
+      "note": "Coinbase CEO"
+    },
+    {
+      "handle": "saylor",
+      "group": "btc",
+      "note": "Michael Saylor, MicroStrategy"
+    },
+    {
+      "handle": "aaboronkov_en",
+      "group": "crypto",
+      "note": ""
+    },
+    {
+      "handle": "aeyakovenko",
+      "group": "solana",
+      "note": "Anatoly Yakovenko, Solana co-founder"
+    },
+    {
+      "handle": "koaborosdai",
+      "group": "crypto",
+      "note": ""
+    },
+    {
+      "handle": "phabortegh",
+      "group": "crypto",
+      "note": ""
+    },
+    {
+      "handle": "jessepollak",
+      "group": "base",
+      "note": "Jesse Pollak, Base lead"
+    },
+    {
+      "handle": "VitalikButerin",
+      "group": "ethereum",
+      "note": "Vitalik Buterin, Ethereum co-founder"
+    },
+    {
+      "handle": "inversebrah",
+      "group": "crypto",
+      "note": "Inversebrah, crypto influencer"
+    },
+    {
+      "handle": "OpenAI",
+      "group": "ai-lab",
+      "note": "OpenAI"
+    },
+    {
+      "handle": "OpenAIDevs",
+      "group": "ai-lab",
+      "note": "OpenAI 开发者"
+    },
+    {
+      "handle": "AnthropicAI",
+      "group": "ai-lab",
+      "note": "Anthropic (Claude)"
+    },
+    {
+      "handle": "deepseek_ai",
+      "group": "ai-lab",
+      "note": "DeepSeek"
+    },
+    {
+      "handle": "Alibaba_Qwen",
+      "group": "ai-lab",
+      "note": "阿里通义千问"
+    },
+    {
+      "handle": "Ali_TongyiLab",
+      "group": "ai-lab",
+      "note": "阿里通义实验室"
+    },
+    {
+      "handle": "Kimi_Moonshot",
+      "group": "ai-lab",
+      "note": "月之暗面 Kimi"
+    },
+    {
+      "handle": "MiniMax__AI",
+      "group": "ai-lab",
+      "note": "MiniMax"
+    },
+    {
+      "handle": "Baidu_Inc",
+      "group": "ai-lab",
+      "note": "百度"
+    },
+    {
+      "handle": "ManusAI",
+      "group": "ai-lab",
+      "note": "Manus AI"
+    },
+    {
+      "handle": "huggingface",
+      "group": "ai-lab",
+      "note": "Hugging Face"
+    },
+    {
+      "handle": "cerebras",
+      "group": "ai-lab",
+      "note": "Cerebras"
+    },
+    {
+      "handle": "KwaiAICoder",
+      "group": "ai-lab",
+      "note": "快手 AI"
+    },
+    {
+      "handle": "Zai_org",
+      "group": "ai-lab",
+      "note": "Zai"
+    },
+    {
+      "handle": "lmstudio",
+      "group": "ai-tool",
+      "note": "LM Studio (本地模型)"
+    },
+    {
+      "handle": "OpenRouterAI",
+      "group": "ai-tool",
+      "note": "OpenRouter (API 聚合)"
+    },
+    {
+      "handle": "cline",
+      "group": "ai-tool",
+      "note": "Cline (AI 编程助手)"
+    },
+    {
+      "handle": "labormarena",
+      "group": "ai-tool",
+      "note": "Chatbot Arena (LLM 评测)"
+    },
+    {
+      "handle": "AndrewNG",
+      "group": "ai-kol",
+      "note": "吴恩达"
+    },
+    {
+      "handle": "vista8",
+      "group": "ai-kol",
+      "note": "中文 AI 圈 KOL"
+    },
+    {
+      "handle": "karminski3",
+      "group": "ai-kol",
+      "note": "中文 AI 圈 KOL"
+    },
+    {
+      "handle": "op7418",
+      "group": "ai-kol",
+      "note": "中文 AI 圈 KOL (歸藏)"
+    },
+    {
+      "handle": "geekbb",
+      "group": "ai-kol",
+      "note": "中文 AI 圈 KOL"
+    },
+    {
+      "handle": "lxfater",
+      "group": "ai-coding",
+      "note": "铁锤人，Claude/OpenClaw 部署教程，中推历史第一人"
+    },
+    {
+      "handle": "zhixianio",
+      "group": "ai-coding",
+      "note": "知县，Agent 训练师系列 + ClawPal GUI 工具作者"
+    },
+    {
+      "handle": "servasyy_ai",
+      "group": "ai-coding",
+      "note": "龙虾4兄弟之一，多 Agent 实战硬核选手"
+    },
+    {
+      "handle": "zstmfhy",
+      "group": "ai-coding",
+      "note": "AI 奶爸，Seedance 视频生成集成"
+    },
+    {
+      "handle": "AxtonLiu",
+      "group": "ai-coding",
+      "note": "教主，Skill 开发 + 安全深测专家"
+    },
+    {
+      "handle": "bitfish",
+      "group": "ai-coding",
+      "note": "神鱼，Crypto 安全三层架构"
+    },
+    {
+      "handle": "wshuyi",
+      "group": "ai-coding",
+      "note": "王树义，学者型分析，订阅政策研究"
+    },
+    {
+      "handle": "ohxiyu",
+      "group": "ai-coding",
+      "note": "活跃玩家"
+    },
+    {
+      "handle": "edwordkaru",
+      "group": "ai-coding",
+      "note": "手机端部署方案"
+    },
+    {
+      "handle": "YuLin807",
+      "group": "ai-coding",
+      "note": "上班族玩家，用 Claw 自动化工作流"
+    },
+    {
+      "handle": "eternityspring",
+      "group": "ai-coding",
+      "note": "活跃玩家"
+    },
+    {
+      "handle": "NRhb11",
+      "group": "ai-coding",
+      "note": "PicoClaw 双机部署玩家"
+    },
+    {
+      "handle": "aronhouyu",
+      "group": "ai-coding",
+      "note": "实战玩家"
+    },
+    {
+      "handle": "geekshellio",
+      "group": "ai-coding",
+      "note": "活跃玩家"
+    },
+    {
+      "handle": "AlllenDkde59",
+      "group": "ai-coding",
+      "note": "观点型玩家"
+    },
+    {
+      "handle": "GoSailGlobal",
+      "group": "ai-coding",
+      "note": "Jason Zhu，AI SaaS 出海，独立开发"
+    },
+    {
+      "handle": "top2loser",
+      "group": "ai-coding",
+      "note": "观点型玩家"
+    },
+    {
+      "handle": "sunxx2094",
+      "group": "ai-coding",
+      "note": "观点型玩家"
+    },
+    {
+      "handle": "Leslieyu0",
+      "group": "ai-coding",
+      "note": "用博弈论分析爆款"
+    },
+    {
+      "handle": "pingfanbufan",
+      "group": "ai-coding",
+      "note": "观点型玩家"
+    },
+    {
+      "handle": "lesliedqbb",
+      "group": "ai-coding",
+      "note": "观点型玩家"
+    },
+    {
+      "handle": "drq_ai",
+      "group": "ai-coding",
+      "note": "观点型玩家"
+    },
+    {
+      "handle": "karry_viber",
+      "group": "ai-coding",
+      "note": "观点型玩家"
+    },
+    {
+      "handle": "xiaohaige_tim",
+      "group": "ai-coding",
+      "note": "观点型玩家"
+    },
+    {
+      "handle": "xxx111god",
+      "group": "ai-coding",
+      "note": "Jason Zuo，永续 Agent 实践者，任务/记忆持久化"
+    },
+    {
+      "handle": "xingpt",
+      "group": "ai-kol-cn",
+      "note": "XinGPT，中文 AI+Crypto 跨界 KOL (xhunt top 2)"
+    },
+    {
+      "handle": "ai_muzi",
+      "group": "ai-kol-cn",
+      "note": "木子不写代码，OpenClaw 视频教程 (xhunt top 20)"
+    },
+    {
+      "handle": "cuimao",
+      "group": "ai-kol-cn",
+      "note": "CuiMao，AI 生成内容产业观察 (xhunt top 25)"
+    },
+    {
+      "handle": "stark_nico99",
+      "group": "ai-kol-cn",
+      "note": "Nicolechan，OpenClaw AI Agent 教程 (xhunt top 8)"
+    },
+    {
+      "handle": "yanhua1010",
+      "group": "ai-kol-cn",
+      "note": "Yanhua，OpenClaw 实战用例 (xhunt top 11)"
+    },
+    {
+      "handle": "bozhou_ai",
+      "group": "ai-kol-cn",
+      "note": "泊舟，AI 工具配置指南"
+    },
+    {
+      "handle": "onenewbite",
+      "group": "ai-kol-cn",
+      "note": "一口新饭，OpenClaw + NotebookLM"
+    },
+    {
+      "handle": "canghe",
+      "group": "ai-kol-cn",
+      "note": "苍何，Kimi 版 OpenClaw 部署"
+    },
+    {
+      "handle": "stevibe",
+      "group": "ai-kol-cn",
+      "note": "stevibe，LLM 测评观察"
+    },
+    {
+      "handle": "jarodise",
+      "group": "ai-kol-cn",
+      "note": "数字游民Jarod，Taalas 芯片 + Llama 本地推理"
+    },
+    {
+      "handle": "0xaa_science",
+      "group": "ai-kol-cn",
+      "note": "0xAA，Vibe coding + Cloudflare"
+    },
+    {
+      "handle": "astaxie",
+      "group": "ai-kol-cn",
+      "note": "astaxie，Stanford Vibe Coding 课程传播"
+    },
+    {
+      "handle": "wangdefou",
+      "group": "ai-kol-cn",
+      "note": "得否，Mac 端 OpenClaw 安装教程"
+    },
+    {
+      "handle": "wy_mask",
+      "group": "ai-kol-cn",
+      "note": "无颜，OpenClaw 安装教程分享"
+    },
+    {
+      "handle": "linwanwan823",
+      "group": "ai-kol-cn",
+      "note": "林晚晚的猫，AI 时代教育观察"
+    },
+    {
+      "handle": "karpathy",
+      "group": "ai-kol-en",
+      "note": "Andrej Karpathy, ex-Tesla AI / OpenAI founding member"
+    },
+    {
+      "handle": "ylecun",
+      "group": "ai-kol-en",
+      "note": "Yann LeCun, Meta Chief AI Scientist"
+    },
+    {
+      "handle": "DrJimFan",
+      "group": "ai-kol-en",
+      "note": "Jim Fan, NVIDIA Senior Research Manager"
+    },
+    {
+      "handle": "swyx",
+      "group": "ai-kol-en",
+      "note": "swyx, AI Engineer founder, Latent Space podcast"
+    },
+    {
+      "handle": "simonw",
+      "group": "ai-kol-en",
+      "note": "Simon Willison, Datasette creator, LLM tooling expert"
+    },
+    {
+      "handle": "hwchase17",
+      "group": "ai-kol-en",
+      "note": "Harrison Chase, LangChain founder"
+    },
+    {
+      "handle": "EMostaque",
+      "group": "ai-kol-en",
+      "note": "Emad Mostaque, ex-Stability AI CEO"
+    },
+    {
+      "handle": "sama",
+      "group": "ai-kol-en",
+      "note": "Sam Altman, OpenAI CEO"
+    },
+    {
+      "handle": "demishassabis",
+      "group": "ai-kol-en",
+      "note": "Demis Hassabis, Google DeepMind CEO"
+    },
+    {
+      "handle": "elonmusk",
+      "group": "ai-kol-en",
+      "note": "Elon Musk, xAI / Tesla / X"
+    },
+    {
+      "handle": "aidan_gomez",
+      "group": "ai-kol-en",
+      "note": "Aidan Gomez, Cohere CEO, Transformer co-author"
+    },
+    {
+      "handle": "fchollet",
+      "group": "ai-kol-en",
+      "note": "François Chollet, Keras creator, ARC benchmark"
+    },
+    {
+      "handle": "soumithchintala",
+      "group": "ai-kol-en",
+      "note": "Soumith Chintala, PyTorch co-creator"
+    },
+    {
+      "handle": "jeremyphoward",
+      "group": "ai-kol-en",
+      "note": "Jeremy Howard, fast.ai founder"
+    },
+    {
+      "handle": "lilianweng",
+      "group": "ai-kol-en",
+      "note": "Lilian Weng, OpenAI Head of Safety"
+    },
+    {
+      "handle": "OndoFinance",
+      "group": "defi-rwa",
+      "note": "Ondo Finance, tokenized US Treasuries (OUSG/USDY)"
+    },
+    {
+      "handle": "nathanlallman",
+      "group": "defi-rwa",
+      "note": "Nathan Allman, Ondo Finance CEO"
+    },
+    {
+      "handle": "Securitize",
+      "group": "defi-rwa",
+      "note": "Securitize, tokenized securities platform"
+    },
+    {
+      "handle": "MakerDAO",
+      "group": "defi-rwa",
+      "note": "MakerDAO / Sky, RWA-backed stablecoin DAI"
+    },
+    {
+      "handle": "runekek",
+      "group": "defi-rwa",
+      "note": "Rune Christensen, MakerDAO founder"
+    },
+    {
+      "handle": "centrifuge",
+      "group": "defi-rwa",
+      "note": "Centrifuge, RWA tokenization protocol"
+    },
+    {
+      "handle": "maplefinance",
+      "group": "defi-rwa",
+      "note": "Maple Finance, institutional DeFi lending"
+    },
+    {
+      "handle": "StaniKulechov",
+      "group": "defi-protocol",
+      "note": "Stani Kulechov, Aave founder"
+    },
+    {
+      "handle": "AaveAave",
+      "group": "defi-protocol",
+      "note": "Aave, largest DeFi lending protocol"
+    },
+    {
+      "handle": "Uniswap",
+      "group": "defi-protocol",
+      "note": "Uniswap, largest DEX"
+    },
+    {
+      "handle": "haydenzadams",
+      "group": "defi-protocol",
+      "note": "Hayden Adams, Uniswap founder"
+    },
+    {
+      "handle": "DefiLlama",
+      "group": "defi-data",
+      "note": "DeFi Llama, TVL tracking / DeFi analytics"
+    },
+    {
+      "handle": "RyanSAdams",
+      "group": "defi-kol",
+      "note": "Ryan Sean Adams, Bankless co-founder"
+    },
+    {
+      "handle": "TrustlessState",
+      "group": "defi-kol",
+      "note": "David Hoffman, Bankless co-founder"
+    },
+    {
+      "handle": "rleshner",
+      "group": "defi-protocol",
+      "note": "Robert Leshner, Compound founder, Superstate CEO"
+    },
+    {
+      "handle": "adamscochran",
+      "group": "defi-kol",
+      "note": "Adam Cochran, crypto/DeFi analyst"
+    },
+    {
+      "handle": "dotey",
+      "group": "ai-kol-cn",
+      "note": "宝玉，中文 AI 圈高频信息源，Prompt 工程与 AI 实战（鱼总推荐 2026-03）"
+    },
+    {
+      "handle": "Gorden_Sun",
+      "group": "ai-kol-cn",
+      "note": "AI 资讯日报，新模型与热点动态（鱼总推荐 2026-03）"
+    },
+    {
+      "handle": "thinkingjimmy",
+      "group": "ai-kol-cn",
+      "note": "AI 工具与产品，实用技巧（鱼总推荐 2026-03）"
+    },
+    {
+      "handle": "lidangzzz",
+      "group": "ai-kol-cn",
+      "note": "立党，创业投资与成长避坑（鱼总推荐 2026-03）"
+    },
+    {
+      "handle": "nateleex",
+      "group": "ai-kol-cn",
+      "note": "李自然，连续创业故事与认知（鱼总推荐 2026-03）"
+    },
+    {
+      "handle": "yan5xu",
+      "group": "ai-kol-cn",
+      "note": "AIGC 应用商业化与非典型开发创业（鱼总推荐 2026-03）"
+    },
+    {
+      "handle": "indie_maker_fox",
+      "group": "ai-kol-cn",
+      "note": "独立开发出海，模板/建站/变现实战（鱼总推荐 2026-03）"
+    },
+    {
+      "handle": "HongyuanCao",
+      "group": "ai-kol-cn",
+      "note": "出海 SaaS 与 AI 产品，开发与增长（鱼总推荐 2026-03）"
+    },
+    {
+      "handle": "nextify2024",
+      "group": "ai-kol-cn",
+      "note": "SaaS 开发工具与产品构建（鱼总推荐 2026-03）"
+    },
+    {
+      "handle": "gefei55",
+      "group": "ai-kol-cn",
+      "note": "哥飞，出海建站 SEO 与流量实战（鱼总推荐 2026-03）"
+    },
+    {
+      "handle": "lyc_zh",
+      "group": "ai-kol-cn",
+      "note": "AI 出海独立开发与增长（鱼总推荐 2026-03）"
+    },
+    {
+      "handle": "AI_Jasonyu",
+      "group": "ai-kol-cn",
+      "note": "鱼总聊 AI，AI/出海/eSIM 交叉领域（鱼总推荐 2026-03）"
+    },
+    {
+      "handle": "austinit",
+      "group": "ai-kol-cn",
+      "note": "代码养活自己，AI 编程与收入分享（鱼总推荐 2026-03）"
+    },
+    {
+      "handle": "guishou_56",
+      "group": "ai-kol-cn",
+      "note": "出海独立开发与 AI 工具实战（鱼总推荐 2026-03）"
+    },
+    {
+      "handle": "9yearfish",
+      "group": "ai-kol-cn",
+      "note": "产品迭代与开源贡献（鱼总推荐 2026-03）"
+    },
+    {
+      "handle": "abskoop",
+      "group": "ai-kol-cn",
+      "note": "OpenClaw 教程与 AI Agent 资源（鱼总推荐 2026-03）"
+    },
+    {
+      "handle": "hongming731",
+      "group": "ai-kol-cn",
+      "note": "OpenClaw 指南与社区构建（鱼总推荐 2026-03）"
+    },
+    {
+      "handle": "penny777",
+      "group": "ai-kol-cn",
+      "note": "OpenClaw 项目演示与优化（鱼总推荐 2026-03）"
+    },
+    {
+      "handle": "Tumeng05",
+      "group": "ai-kol-cn",
+      "note": "AI 创业与 LLM/RAG/Agent 实战（鱼总推荐 2026-03）"
+    },
+    {
+      "handle": "nishuang",
+      "group": "ai-kol-cn",
+      "note": "AI 工具与生产力提升（鱼总推荐 2026-03）"
+    },
+    {
+      "handle": "lijigang",
+      "group": "ai-kol-cn",
+      "note": "李继刚，深度 Prompt 设计与 AI 艺术（鱼总推荐 2026-03）"
+    },
+    {
+      "handle": "kaifulee",
+      "group": "ai-kol-cn",
+      "note": "李开复，AI 产业洞察与创业投资（鱼总推荐 2026-03）"
+    },
+    {
+      "handle": "WaytoAGI",
+      "group": "ai-kol-cn",
+      "note": "中文 AI 知识体系与学习路径（鱼总推荐 2026-03）"
+    },
+    {
+      "handle": "xicilion",
+      "group": "ai-kol-cn",
+      "note": "响马，LLM 实战与应用开发（鱼总推荐 2026-03）"
+    },
+    {
+      "handle": "oran_ge",
+      "group": "ai-kol-cn",
+      "note": "Orange AI，Agent 创业与产品化（鱼总推荐 2026-03）"
+    },
+    {
+      "handle": "AlchainHust",
+      "group": "ai-kol-cn",
+      "note": "AI 进化论花生，前沿技术解读（鱼总推荐 2026-03）"
+    },
+    {
+      "handle": "SamuelQZQ",
+      "group": "ai-kol-cn",
+      "note": "DN-Samuel，AI 工具拆解与测评（鱼总推荐 2026-03）"
+    },
+    {
+      "handle": "elliotchen100",
+      "group": "ai-kol-cn",
+      "note": "艾略特，AI Builder 与产品实践（鱼总推荐 2026-03）"
+    },
+    {
+      "handle": "Hayami_kiraa",
+      "group": "ai-kol-cn",
+      "note": "早见，创意 AI 应用与设计（鱼总推荐 2026-03）"
+    },
+    {
+      "handle": "berryxia",
+      "group": "ai-kol-cn",
+      "note": "Berryxia.AI，AI 产品与工作流（鱼总推荐 2026-03）"
+    },
+    {
+      "handle": "santiagoyoungus",
+      "group": "ai-kol-cn",
+      "note": "圣总聊出海，跨境创业实战（鱼总推荐 2026-03）"
+    },
+    {
+      "handle": "Cydiar404",
+      "group": "ai-kol-cn",
+      "note": "AI 产品落地与商业化（鱼总推荐 2026-03）"
+    },
+    {
+      "handle": "JefferyTatsuya",
+      "group": "ai-kol-cn",
+      "note": "AI 创业与用户增长（鱼总推荐 2026-03）"
+    },
+    {
+      "handle": "seclink",
+      "group": "ai-kol-cn",
+      "note": "创业运营实战与安全管理（鱼总推荐 2026-03）"
+    },
+    {
+      "handle": "Fenng",
+      "group": "ai-kol-cn",
+      "note": "冯大辉，商业评论与医疗 AI（鱼总推荐 2026-03）"
+    },
+    {
+      "handle": "turingou",
+      "group": "ai-kol-cn",
+      "note": "郭宇，科技创业与区块链（鱼总推荐 2026-03）"
+    },
+    {
+      "handle": "tinyfool",
+      "group": "ai-kol-cn",
+      "note": "霍炬，技术创业与行业洞察（鱼总推荐 2026-03）"
+    },
+    {
+      "handle": "virushuo",
+      "group": "ai-kol-cn",
+      "note": "范凯，创业复盘与技术管理（鱼总推荐 2026-03）"
+    },
+    {
+      "handle": "XDash",
+      "group": "ai-kol-cn",
+      "note": "创业洞察与产品书单（鱼总推荐 2026-03）"
+    },
+    {
+      "handle": "idoubicc",
+      "group": "ai-kol-cn",
+      "note": "iDubii，独立开发与 AI 工具（鱼总推荐 2026-03）"
+    },
+    {
+      "handle": "CoderJeffLee",
+      "group": "ai-kol-cn",
+      "note": "子木，SaaS 出海与产品技术（鱼总推荐 2026-03）"
+    },
+    {
+      "handle": "tuturetom",
+      "group": "ai-kol-cn",
+      "note": "Tom Huang，开源 Agent 与开发者工具（鱼总推荐 2026-03）"
+    },
+    {
+      "handle": "iamtonyzhu",
+      "group": "ai-kol-cn",
+      "note": "Tony 出海，跨境产品与增长（鱼总推荐 2026-03）"
+    },
+    {
+      "handle": "hongjun60",
+      "group": "ai-kol-cn",
+      "note": "泓君 Jane，科技创业与女性视角（鱼总推荐 2026-03）"
+    },
+    {
+      "handle": "Valley101_Qian",
+      "group": "ai-kol-cn",
+      "note": "陈茜，科技媒体与创业报道（鱼总推荐 2026-03）"
+    },
+    {
+      "handle": "readyfor2025",
+      "group": "ai-kol-cn",
+      "note": "SaaS 出海产品与全球化（鱼总推荐 2026-03）"
+    },
+    {
+      "handle": "weijunext",
+      "group": "ai-kol-cn",
+      "note": "Next.js SaaS 开发与全栈实践（鱼总推荐 2026-03）"
+    },
+    {
+      "handle": "yihui_indie",
+      "group": "ai-kol-cn",
+      "note": "SaaS 知识变现与独立开发（鱼总推荐 2026-03）"
+    },
+    {
+      "handle": "JinsFavorites",
+      "group": "ai-kol-cn",
+      "note": "SaaS 产品观察与竞品分析（鱼总推荐 2026-03）"
+    },
+    {
+      "handle": "xiongchun007",
+      "group": "ai-kol-cn",
+      "note": "数据工具 SaaS 与 BI 实践（鱼总推荐 2026-03）"
+    },
+    {
+      "handle": "Junyu",
+      "group": "ai-kol-cn",
+      "note": "王俊煜，产品设计与用户体验（鱼总推荐 2026-03）"
+    },
+    {
+      "handle": "luoleiorg",
+      "group": "ai-kol-cn",
+      "note": "罗磊，APP 分析与移动开发（鱼总推荐 2026-03）"
+    },
+    {
+      "handle": "Plidezus",
+      "group": "ai-kol-cn",
+      "note": "独立 APP 开发与产品实践（鱼总推荐 2026-03）"
+    },
+    {
+      "handle": "jesselaunz",
+      "group": "ai-kol-cn",
+      "note": "遁一子，AI 产品与设计思维（鱼总推荐 2026-03）"
+    },
+    {
+      "handle": "lewangx",
+      "group": "ai-kol-cn",
+      "note": "王乐，AI 硬件与机器人（鱼总推荐 2026-03）"
+    },
+    {
+      "handle": "tualatrix",
+      "group": "ai-kol-cn",
+      "note": "图拉鼎，iOS 开发与开源工具（鱼总推荐 2026-03）"
+    },
+    {
+      "handle": "luinlee",
+      "group": "ai-kol-cn",
+      "note": "子骅，工程效能与产品技术（鱼总推荐 2026-03）"
+    },
+    {
+      "handle": "yupi996",
+      "group": "ai-kol-cn",
+      "note": "程序员鱼皮，编程学习与项目开发（鱼总推荐 2026-03）"
+    },
+    {
+      "handle": "JourneymanChina",
+      "group": "ai-kol-cn",
+      "note": "出海被动收入与数字游民（鱼总推荐 2026-03）"
+    },
+    {
+      "handle": "dev_afei",
+      "group": "ai-kol-cn",
+      "note": "前端出海与全栈开发（鱼总推荐 2026-03）"
+    },
+    {
+      "handle": "luobogooooo",
+      "group": "ai-kol-cn",
+      "note": "工具站出海与 SEO 实战（鱼总推荐 2026-03）"
+    },
+    {
+      "handle": "chuhaiqu",
+      "group": "ai-kol-cn",
+      "note": "出海去孵化器与创业服务（鱼总推荐 2026-03）"
+    },
+    {
+      "handle": "daluoseo",
+      "group": "ai-kol-cn",
+      "note": "大罗 SEO，搜索引擎优化与流量（鱼总推荐 2026-03）"
+    },
+    {
+      "handle": "benshandebiao",
+      "group": "ai-kol-cn",
+      "note": "Build in Public，公开构建与透明创业（鱼总推荐 2026-03）"
+    },
+    {
+      "handle": "hwwaanng",
+      "group": "ai-kol-cn",
+      "note": "iOS 独立开发与 App Store 实战（鱼总推荐 2026-03）"
+    },
+    {
+      "handle": "OwenYoungZh",
+      "group": "ai-kol-cn",
+      "note": "沉浸式翻译，开源工具与产品化（鱼总推荐 2026-03）"
+    },
+    {
+      "handle": "waylybaye",
+      "group": "ai-kol-cn",
+      "note": "Baye，iOS 开发与工具链（鱼总推荐 2026-03）"
+    },
+    {
+      "handle": "randyloop",
+      "group": "ai-kol-cn",
+      "note": "Randy，开源作者与开发者工具（鱼总推荐 2026-03）"
+    },
+    {
+      "handle": "livid",
+      "group": "ai-kol-cn",
+      "note": "中文独立开发社区与 V2EX（鱼总推荐 2026-03）"
+    },
+    {
+      "handle": "shengxj1",
+      "group": "ai-kol-cn",
+      "note": "花果山大圣，技术创业与产品（鱼总推荐 2026-03）"
+    },
+    {
+      "handle": "FinanceYF5",
+      "group": "ai-kol-cn",
+      "note": "郎瀚威 Will，创业融资与财务（鱼总推荐 2026-03）"
+    },
+    {
+      "handle": "liuyi0922",
+      "group": "ai-kol-cn",
+      "note": "61，iOS 应用开发与产品设计（鱼总推荐 2026-03）"
+    },
+    {
+      "handle": "fkysly",
+      "group": "ai-kol-cn",
+      "note": "马天翼，Indie Hacker 与产品实践（鱼总推荐 2026-03）"
+    },
+    {
+      "handle": "Pluvio9yte",
+      "group": "ai-kol-cn",
+      "note": "雪踏乌云，AI 工具与创意应用（鱼总推荐 2026-03）"
+    },
+    {
+      "handle": "quarktalksss",
+      "group": "ai-kol-cn",
+      "note": "OpenClaw 教程与 Agent 实战（鱼总推荐 2026-03）"
+    },
+    {
+      "handle": "Khazix0918",
+      "group": "ai-kol-cn",
+      "note": "OpenClaw 优化与性能调优（鱼总推荐 2026-03）"
+    },
+    {
+      "handle": "jiqizhixin",
+      "group": "ai-kol-cn",
+      "note": "机器之心，AI 前沿技术与产业（鱼总推荐 2026-03）"
+    },
+    {
+      "handle": "evilcos",
+      "group": "ai-kol-cn",
+      "note": "余弦，安全视角与 AI 风险（鱼总推荐 2026-03）"
+    },
+    {
+      "handle": "steipete",
+      "group": "ai-kol-cn",
+      "note": "Peter Steinberger，OpenClaw 创始人与架构（鱼总推荐 2026-03）"
+    },
+    {
+      "handle": "DeFiMinty",
+      "group": "defi-kol",
+      "note": "Minty, DeFi alpha & yield strategies, massive engagement"
+    },
+    {
+      "handle": "Route2FI",
+      "group": "defi-kol",
+      "note": "Route 2 FI, DeFi investment strategies & portfolio"
+    },
+    {
+      "handle": "thedefiedge",
+      "group": "defi-kol",
+      "note": "The DeFi Edge, cross-sector analysis (DeFi/RWA/Prediction)"
+    },
+    {
+      "handle": "DeFi_Made_Here",
+      "group": "defi-kol",
+      "note": "DMH, DeFi deep dives & yield farming"
+    },
+    {
+      "handle": "DegenSpartan",
+      "group": "defi-kol",
+      "note": "DegenSpartan, OG DeFi trader & commentator"
+    },
+    {
+      "handle": "Ignas_DeFi",
+      "group": "defi-kol",
+      "note": "Ignas, DeFi research & alpha threads"
+    },
+    {
+      "handle": "0xFinish",
+      "group": "defi-kol",
+      "note": "Finish, DeFi analyst"
+    },
+    {
+      "handle": "WinterSoldierxz",
+      "group": "defi-kol",
+      "note": "Winter Soldier, DeFi alpha hunter, high RT"
+    },
+    {
+      "handle": "PopPunkOnChain",
+      "group": "defi-kol",
+      "note": "Pop Punk, on-chain analysis & prediction markets"
+    },
+    {
+      "handle": "Sassal0x",
+      "group": "defi-kol",
+      "note": "sassal.eth, Ethereum & DeFi daily updates"
+    },
+    {
+      "handle": "QwertiAI",
+      "group": "defi-kol",
+      "note": "Qwerti, AI-powered DeFi analysis"
+    },
+    {
+      "handle": "0xLexieAI",
+      "group": "defi-kol",
+      "note": "LexieAI, DeFi protocol analysis"
+    },
+    {
+      "handle": "ChartNerdTA",
+      "group": "defi-kol",
+      "note": "ChartNerd, DeFi technical analysis"
+    },
+    {
+      "handle": "CryptoPilot3226",
+      "group": "defi-kol-cn",
+      "note": "Crypto舒克, DeFi策略分析, 中文"
+    },
+    {
+      "handle": "Btcniumowang",
+      "group": "defi-kol-cn",
+      "note": "牛魔王, RWA+DeFi+BTC生态, 中文"
+    },
+    {
+      "handle": "Bunny69v",
+      "group": "defi-kol-cn",
+      "note": "兔叽 Miao, DeFi策略, 中文"
+    },
+    {
+      "handle": "cryptolinda777",
+      "group": "defi-kol-cn",
+      "note": "加密Linda, DeFi科普+分析, 中文"
+    },
+    {
+      "handle": "richrichardoz",
+      "group": "defi-kol-cn",
+      "note": "小Z, DeFi深度内容, 超高收藏率, 中文"
+    },
+    {
+      "handle": "Vibe718",
+      "group": "defi-kol-cn",
+      "note": "元气桃桃, DeFi策略分享, 中文"
+    },
+    {
+      "handle": "LabsWeb368672",
+      "group": "defi-kol-cn",
+      "note": "Web3Labs HK, DeFi研究, 高收藏, 中文"
+    },
+    {
+      "handle": "52Hz_eth",
+      "group": "defi-kol-cn",
+      "note": "52Hz.eth, DeFi分析+链上数据, 中文"
+    },
+    {
+      "handle": "CappSchool",
+      "group": "defi-kol-cn",
+      "note": "橙子Bird, DeFi分析, 中文"
+    },
+    {
+      "handle": "pandaBA007",
+      "group": "defi-kol-cn",
+      "note": "区块国宝, RWA分析, 中文"
+    },
+    {
+      "handle": "0xaurSkyo",
+      "group": "defi-kol-cn",
+      "note": "橘子, CeDeFi结构分析, 中文"
+    },
+    {
+      "handle": "qkl2058",
+      "group": "defi-kol-cn",
+      "note": "区块链行情研究, Polymarket交易者追踪+DeFi, 中文"
+    },
+    {
+      "handle": "EigenLayer",
+      "group": "defi-protocol",
+      "note": "EigenLayer, restaking protocol"
+    },
+    {
+      "handle": "ethena_labs",
+      "group": "defi-protocol",
+      "note": "Ethena, synthetic dollar (USDe)"
+    },
+    {
+      "handle": "MorphoLabs",
+      "group": "defi-protocol",
+      "note": "Morpho, lending optimization"
+    },
+    {
+      "handle": "LidoFinance",
+      "group": "defi-protocol",
+      "note": "Lido, liquid staking"
+    },
+    {
+      "handle": "CurveFinance",
+      "group": "defi-protocol",
+      "note": "Curve Finance, stableswap DEX"
+    },
+    {
+      "handle": "SushiSwap",
+      "group": "defi-protocol",
+      "note": "Sushi, multi-chain DEX"
+    },
+    {
+      "handle": "1inch",
+      "group": "defi-protocol",
+      "note": "1inch, DEX aggregator"
+    },
+    {
+      "handle": "Balancer",
+      "group": "defi-protocol",
+      "note": "Balancer, programmable liquidity"
+    },
+    {
+      "handle": "GMX_IO",
+      "group": "defi-protocol",
+      "note": "GMX, perpetual DEX"
+    },
+    {
+      "handle": "PendleFinance",
+      "group": "defi-protocol",
+      "note": "Pendle, yield tokenization"
+    },
+    {
+      "handle": "dYdX",
+      "group": "defi-protocol",
+      "note": "dYdX, decentralized perpetuals"
+    },
+    {
+      "handle": "SynthetixIO",
+      "group": "defi-protocol",
+      "note": "Synthetix, synthetic assets protocol"
+    },
+    {
+      "handle": "HyperliquidX",
+      "group": "defi-protocol",
+      "note": "Hyperliquid, L1 perpetual DEX"
+    },
+    {
+      "handle": "MessariCrypto",
+      "group": "defi-data",
+      "note": "Messari, crypto research & data (DeFi/RWA coverage)"
+    },
+    {
+      "handle": "Delphi_Digital",
+      "group": "defi-data",
+      "note": "Delphi Digital, research firm (DeFi/RWA/Prediction)"
+    },
+    {
+      "handle": "TheBlock__",
+      "group": "defi-data",
+      "note": "The Block, crypto data & news"
+    },
+    {
+      "handle": "TokenTerminal",
+      "group": "defi-data",
+      "note": "Token Terminal, protocol revenue analytics"
+    },
+    {
+      "handle": "CoinGecko",
+      "group": "defi-data",
+      "note": "CoinGecko, market data aggregator"
+    },
+    {
+      "handle": "DuneAnalytics",
+      "group": "defi-data",
+      "note": "Dune, on-chain analytics"
+    },
+    {
+      "handle": "nansen_alpha",
+      "group": "defi-data",
+      "note": "Nansen, on-chain analytics & smart money tracking"
+    },
+    {
+      "handle": "goldfinch_fi",
+      "group": "defi-rwa",
+      "note": "Goldfinch, RWA credit protocol"
+    },
+    {
+      "handle": "TrueFiDAO",
+      "group": "defi-rwa",
+      "note": "TrueFi, institutional DeFi lending"
+    },
+    {
+      "handle": "BackedFi",
+      "group": "defi-rwa",
+      "note": "Backed Finance, tokenized real-world assets"
+    },
+    {
+      "handle": "FlaxFinance",
+      "group": "defi-rwa",
+      "note": "Flax Finance, RWA yield"
+    },
+    {
+      "handle": "superstatefunds",
+      "group": "defi-rwa",
+      "note": "Superstate, on-chain treasury fund (by Compound founder)"
+    },
+    {
+      "handle": "DamiDefi",
+      "group": "rwa-kol",
+      "note": "Dami-Defi, RWA科普, 单条500+赞"
+    },
+    {
+      "handle": "realMaxAvery",
+      "group": "rwa-kol",
+      "note": "Max Avery, RWA+机构叙事"
+    },
+    {
+      "handle": "ShibaXanders",
+      "group": "rwa-kol",
+      "note": "Xanders, RWA深度分析, 高转发"
+    },
+    {
+      "handle": "thebu11runner",
+      "group": "rwa-kol",
+      "note": "Bu11runner, RWA赛道研究"
+    },
+    {
+      "handle": "Karamata2_2",
+      "group": "rwa-kol",
+      "note": "Karamata, RWA多篇高质量内容"
+    },
+    {
+      "handle": "billyjhaay",
+      "group": "rwa-kol",
+      "note": "Echo .base.eth, RWA+Base生态"
+    },
+    {
+      "handle": "BMNRBullz",
+      "group": "rwa-kol",
+      "note": "BMNR Bullz, RWA项目追踪"
+    },
+    {
+      "handle": "Felixwgmi",
+      "group": "rwa-kol",
+      "note": "Felix, RWA analysis"
+    },
+    {
+      "handle": "Zane_Calder",
+      "group": "rwa-kol",
+      "note": "Zane Calder, RWA institutional angle"
+    },
+    {
+      "handle": "CyprxResearch",
+      "group": "rwa-kol",
+      "note": "Cyprx Research, RWA+DeFi交叉研究"
+    },
+    {
+      "handle": "torettoj283",
+      "group": "rwa-kol",
+      "note": "rheRealjohnDoe, RWA+DeFi, 高互动"
+    },
+    {
+      "handle": "jvstme_ophyxial",
+      "group": "rwa-kol",
+      "note": "Val, RWA analysis, 高收藏"
+    },
+    {
+      "handle": "enesonchain",
+      "group": "rwa-kol",
+      "note": "enes.hl, RWA+DeFi on-chain"
+    },
+    {
+      "handle": "Polymarket",
+      "group": "prediction",
+      "note": "Polymarket, 最大预测市场平台"
+    },
+    {
+      "handle": "Kalshi",
+      "group": "prediction",
+      "note": "Kalshi, 合规预测市场 (CFTC regulated)"
+    },
+    {
+      "handle": "thejayden",
+      "group": "prediction-kol",
+      "note": "Jayden, prediction market strategies, 高收藏"
+    },
+    {
+      "handle": "BENNYBEAR001",
+      "group": "prediction-kol",
+      "note": "BENNY, prediction market analysis, 高收藏"
+    },
+    {
+      "handle": "Predictefy",
+      "group": "prediction-kol",
+      "note": "Predictefy, prediction market data & insights"
+    },
+    {
+      "handle": "Kropanchik",
+      "group": "prediction-kol",
+      "note": "Gorynich, Polymarket strategy, 高收藏率"
+    },
+    {
+      "handle": "PolymarketStory",
+      "group": "prediction-kol",
+      "note": "PolymarketHistory, Polymarket分析+故事"
+    },
+    {
+      "handle": "0x_Discover",
+      "group": "prediction-kol",
+      "note": "Discover, prediction market alpha"
+    },
+    {
+      "handle": "BSCNews",
+      "group": "prediction-kol",
+      "note": "BSCN, DeFi+prediction market覆盖"
+    },
+    {
+      "handle": "gilduran76",
+      "group": "prediction-kol",
+      "note": "gil duran, prediction market分析"
+    },
+    {
+      "handle": "jonbma",
+      "group": "prediction-kol",
+      "note": "Jon Ma, prediction market交易"
+    },
+    {
+      "handle": "0xmelissa19",
+      "group": "prediction-kol",
+      "note": "melissa, Polymarket高互动"
+    },
+    {
+      "handle": "TGweb3333",
+      "group": "prediction-kol",
+      "note": "TGweb3, 预测市场数据分析"
+    },
+    {
+      "handle": "JuliePolyMarket",
+      "group": "prediction-kol",
+      "note": "Julie Polymarket BOT, Polymarket数据追踪"
+    },
+    {
+      "handle": "EdgeMarketsX",
+      "group": "prediction-kol",
+      "note": "Edge, prediction market alpha"
+    },
+    {
+      "handle": "Bitquery_io",
+      "group": "prediction-kol",
+      "note": "Bitquery, on-chain + prediction data"
+    },
+    {
+      "handle": "11AMdotclub",
+      "group": "prediction-kol",
+      "note": "11AM w/ Seed Club, prediction market"
+    },
+    {
+      "handle": "Shelpid_WI3M",
+      "group": "prediction-kol",
+      "note": "Shelpid, prediction market高收藏"
+    },
+    {
+      "handle": "AndreWGMI",
+      "group": "prediction-kol",
+      "note": "AndreWGMI, prediction market trader"
+    },
+    {
+      "handle": "WuBlockchain",
+      "group": "crypto",
+      "note": "吴说区块链, 全赛道新闻 (RWA/DeFi覆盖)"
+    },
+    {
+      "handle": "JustDeauIt",
+      "group": "defi-kol",
+      "note": "Michael Nadeau, The DeFi Report, 机构级研报"
+    }
+  ]
+}
