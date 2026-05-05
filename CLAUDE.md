@@ -7,17 +7,41 @@
 
 ---
 
-## 1. 代码 vs 数据 分离
+## 0. v0.3.0 HOME 模式（最重要）
+
+**本仓库是"一个工具，多个实例"的 `git init` 风格架构。**
+
+代码在本仓库；每个实例（个人日报 / 团队日报 / 任何 use case）拥有独立的
+**HOME 目录** —— 里面有自己的 configs、.env、data、logs。运行命令必须指定
+HOME（通过 `--home <path>` 或 `DEEP_DAILY_HOME` 环境变量）。
+
+**当前已部署的实例**：见 `CLAUDE.local.md` 的"实例清单"章节——每个实例的
+HOME 绝对路径、launchd Label、调度时间、publisher 类型都在那里。
+
+- 完整 HOME 布局定义：`docs/architecture.md`
+- 入门创建新实例：`docs/getting-started.md`（`deep-daily init <path>`）
+- 完整配置字段：`docs/config-reference.md`
+- legacy → HOME 迁移：`docs/migration-guide.md`
+
+> ⚠️ 下面 §1-§3 描述的 `~/.local/deep-daily/legacy-data/` 是 **legacy 兼容口径**（pre-v0.3.0）。
+> 新实例走 `<HOME>/data/` 布局，不走 `_default_data_root()`。查看任何
+> 实例的数据，先看它的 HOME 而不是 `~/.local/deep-daily/`。
+
+---
+
+## 1. 代码 vs 数据 分离（legacy 口径，v0.2 遗留）
 
 | 类型 | 路径 | 说明 |
 |---|---|---|
 | **代码** | 本仓库根目录 | 改代码只看这里 |
-| **数据根（runtime）** | `~/.local/deep-daily/legacy-data/`（默认） | 所有抓取/生成产物 |
+| **数据根（runtime，legacy）** | `~/.local/deep-daily/legacy-data/` | pre-v0.3.0 默认；仅 the maintainer's实例仍在此路径 |
+| **数据根（v0.3.0+）** | `<HOME>/data/` | 每个实例自己的 HOME 下的 `data/` 子目录 |
 | 仓库内 `./data/` | `data/{articles,dailies,tweets}/` | **空占位目录**，永远是空的，别在这里找数据；已 gitignore |
 
-> 数据根默认值来自 `src/deep_daily/config.py::_default_data_root()`（第 70-71 行）：
+> v0.2 数据根默认值来自 `src/deep_daily/config.py::_default_data_root()`（第 70-71 行）：
 > `Path.home() / ".david" / "data" / "rss"`
-> 可通过 `configure_paths(data_root=...)` 或 `readers.yaml` 里 `defaults.data_root` 字段覆盖。
+> 在 v0.3.0 HOME 模式下**不再使用此默认值**——数据根由 `init_runtime(home)`
+> 绑定到 `<HOME>/data/`。
 
 ---
 
