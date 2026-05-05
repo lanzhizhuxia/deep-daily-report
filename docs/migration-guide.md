@@ -197,7 +197,7 @@ After 30 days of green runs, it's safe to archive the legacy tree.
 ## Post-cutover checklist
 
 - [ ] Legacy launchd job stopped and removed
-- [ ] New launchd job running on `DEEP_DAILY_HOME=~/.local/deep-daily-daily`
+- [ ] New launchd job running on `DEEP_DAILY_HOME=<your-home-path>`
 - [ ] First scheduled run succeeded (check `logs/stdout.log`)
 - [ ] Output file matches expected format and size
 - [ ] Feishu delivery confirmed (if enabled)

@@ -2156,8 +2156,8 @@ def collect_shared(
 ) -> dict:
     """Step 1 + cross-day freshness tagging.  Returns shared materials + event_store.
 
-    This is the reader-independent part of the pipeline: material collection
-    and global freshness tagging.
+    Material collection and global freshness tagging — performed identically
+    across all instances regardless of reader profile.
     """
     # --- Step 1: Material collection ---
     step1_data = None

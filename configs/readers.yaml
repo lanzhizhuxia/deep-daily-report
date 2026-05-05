@@ -1,31 +1,32 @@
-# readers.yaml — Multi-reader configuration for daily_report.py (ISSUE-201)
+# readers.yaml — DEPRECATED (v0.2 multi-reader configuration)
 #
-# Usage:
-#   python3 tools/rss/daily_report.py generate --readers configs/rss/readers.yaml
-#   python3 tools/rss/daily_report.py generate --readers configs/rss/readers.yaml --reader-id david
+# ⚠️ DO NOT USE. This file is a v0.2 artifact kept only for archaeological
+# reference. The multi-reader model (one process, many readers via a shared
+# readers.yaml) was removed in v0.3.0.
 #
-# Merge precedence: reader entry > defaults > module-level constants
-# See docs/issues/active/ISSUE-201-daily-report-multi-reader/README.md for full spec.
+# In v0.3.0+, each "reader" is its own instance with its own HOME directory:
+#   deep-daily init ~/.my-reader            # create a fresh HOME
+#   deep-daily --home ~/.my-reader run      # run this reader
+#   deep-daily --home ~/.other-reader run   # run a different reader
+#
+# The fields that used to live here are now split across each HOME's:
+#   - config.yaml    (reader.name, reader.notify.*, pipeline.*, models.*, publisher.*)
+#   - configs/profile.yaml
+#   - configs/topics.yaml
+#   - configs/kols.json
+#   - configs/active-systems.yaml
+#
+# Migration: see docs/migration-guide.md.
+#
+# The file is left in the repo (not deleted) so that:
+#   1. `git log configs/readers.yaml` remains searchable for people tracing
+#      v0.2 → v0.3 history.
+#   2. Anyone who still has an old `--readers configs/readers.yaml` command
+#      in their cron/launchd will get a loud YAML that tells them to migrate,
+#      not a silent "file not found".
+#
+# DO NOT pass this file to any v0.3.0+ CLI. It is not read by the current tool.
 
-version: 1
-
-defaults:
-  data_root: "~/.local/deep-daily/legacy-data"
-  topics_pinned: "configs/rss/topics.yaml"
-  topic_dynamic: "~/.local/deep-daily/legacy-data/dynamic-topics.json"
-  profile: "~/.local/deep-daily/legacy-data/reader-profile.yaml"
-  active_systems: "~/.local/deep-daily/legacy-data/active-systems.yaml"
-  kols_static: "~/.local/deep-daily/legacy-data/twitter-kols.json"
-  kols_dynamic: "~/.local/deep-daily/legacy-data/dynamic-kols.json"
-  reported_events_global: "~/.local/deep-daily/legacy-data/reported_events.json"
-  notify:
-    topic_id: "work.rss.daily-report"
-    event_id: "rss_daily_report_ready"
-
-readers:
-  - reader_id: "david"
-    enabled: true
-    # No overrides — uses all defaults (backward compatible with single-reader mode)
-    notify:
-      topic_id: "work.rss.daily-report"
-      dedupe_prefix: "rss_daily_report"
+deprecated: true
+deprecated_since: "0.3.0"
+replacement: "per-instance HOME directories — see docs/getting-started.md"

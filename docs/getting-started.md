@@ -69,7 +69,7 @@ Edit `~/.my-daily/configs/*.yaml` to define:
 - **topics.yaml** — the topic taxonomy the filter model uses
 - **sources.yaml** — RSS feeds to poll
 - **kols.json** — Twitter accounts to pull
-- **profile.yaml** — the reader's persona (drives the write step's voice)
+- **profile.yaml** — this instance's reader persona (drives the write step's voice)
 
 See [config-reference.md](config-reference.md) for the complete schema.
 

@@ -47,7 +47,7 @@ HOME 绝对路径、launchd Label、调度时间、publisher 类型都在那里�
 
 ## 2. 每日产出（最常用）
 
-**路径**：`<DATA_ROOT>/dailies/`（默认 `~/.local/deep-daily/legacy-data/dailies/`）
+**路径**：`<DATA_ROOT>/dailies/`（v0.2 时是 `~/.local/deep-daily/legacy-data/dailies/`；v0.3.0+ 是 `<HOME>/data/dailies/`）
 
 每天清晨由定时任务生成两个文件：
 

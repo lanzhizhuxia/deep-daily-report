@@ -1,12 +1,13 @@
 [project]
 name = "deep-daily-report"
-version = "0.2.0"
-description = "Standalone deep daily digest pipeline — full-featured, self-use edition (ISSUE-201)"
+version = "0.3.0"
+description = "Deep daily digest generator — multi-instance architecture (one tool, many HOMEs via `deep-daily init <path>`)"
 requires-python = ">=3.10"
 dependencies = [
     "pyyaml>=6.0",
     "markdown>=3.6",
     "feedparser>=6.0",
+    "sqlite-utils>=3.36",
 ]
 
 [project.optional-dependencies]

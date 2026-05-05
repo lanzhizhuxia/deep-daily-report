@@ -1,7 +1,7 @@
 # configs/rss/topics.yaml — 日报主题治理 (ISSUE-148)
 # pinned: 用户指定必选主题，不可删除，有相关素材时必须输出
 # dynamic_max: 玄龄可自主管理的动态主题上限
-# 动态主题存储在 ~/.local/deep-daily/legacy-data/dynamic-topics.json（runtime，不入 repo）
+# 动态主题存储在 <HOME>/data/dynamic-topics.json（v0.3.0+ runtime path，不入 repo）
 # ⚠️ 本文件对 agent 和自动化工具只读 (ISSUE-151)。动态主题通过 runtime 文件管理。
 
 pinned:
