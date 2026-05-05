@@ -4,6 +4,7 @@ __pycache__/
 dist/
 build/
 .env.local
+.env.local.bak.*
 data/
 
 # runtime artifacts
