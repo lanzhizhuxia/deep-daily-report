@@ -121,6 +121,51 @@ def normalize_tweet_bulk(path: Path, record: dict[str, Any]) -> NormalizedItem:
     )
 
 
+def normalize_news6551(path: Path, record: dict[str, Any]) -> NormalizedItem:
+    native_id = _clean_text(record.get("id")) or path.stem
+    return NormalizedItem(
+        id=f"news6551:{native_id}",
+        source="news6551",
+        native_id=native_id,
+        event_ts=_normalize_timestamp(record["time"]),
+        fetched_ts=_normalize_timestamp(record["time"]),
+        author=_clean_text(record.get("source_name")),
+        title=_clean_text(record.get("title")),
+        body=_clean_text(record.get("title")),
+        body_zh=None,
+        url=_clean_text(record.get("link")),
+        category=_news6551_category_from_group(path),
+        relevance=_coerce_int(record.get("relevance")),
+        has_curated=0,
+        has_bulk=0,
+        preferred_src="single",
+        raw_hash=_raw_hash(record),
+    )
+
+
+def normalize_hn(path: Path, record: dict[str, Any]) -> NormalizedItem:
+    """Normalize HN stories per PRD §4.6; points/comments live in category metadata."""
+    native_id = _clean_text(record.get("objectID")) or path.stem
+    return NormalizedItem(
+        id=f"hn:{native_id}",
+        source="hn",
+        native_id=native_id,
+        event_ts=_normalize_timestamp(record["created_at"]),
+        fetched_ts=_normalize_timestamp(record["created_at"]),
+        author=_clean_text(record.get("author")),
+        title=_clean_text(record.get("title")),
+        body=_clean_text(record.get("title")),
+        body_zh=None,
+        url=_clean_text(record.get("url")),
+        category=_hn_category(record),
+        relevance=None,
+        has_curated=0,
+        has_bulk=0,
+        preferred_src="single",
+        raw_hash=_raw_hash(record),
+    )
+
+
 def _tweet_native_id(path: Path, raw_json: dict[str, Any]) -> str:
     raw_id = _clean_text(raw_json.get("id"))
     if raw_id:
@@ -186,3 +231,24 @@ def _join_optional(first: str | None, second: str | None) -> str | None:
     if first and second:
         return f"{first}\n\n{second}"
     return first or second
+
+
+def _news6551_category_from_group(path: Path) -> str | None:
+    stem = path.stem
+    if "_" not in stem:
+        return None
+    _, category = stem.split("_", 1)
+    return category or None
+
+
+def _hn_category(record: dict[str, Any]) -> str | None:
+    parts: list[str] = []
+    points = _coerce_int(record.get("points"))
+    if points is not None:
+        parts.append(f"points={points}")
+    num_comments = _coerce_int(record.get("num_comments"))
+    if num_comments is not None:
+        parts.append(f"num_comments={num_comments}")
+    if not parts:
+        return None
+    return "hn:" + ",".join(parts)

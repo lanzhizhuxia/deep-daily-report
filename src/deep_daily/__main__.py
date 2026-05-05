@@ -133,6 +133,14 @@ def build_parser() -> argparse.ArgumentParser:
     p_kb_stats.add_argument(
         "--json", action="store_true", help="Machine-readable JSON output"
     )
+    p_kb_query = kb_sub.add_parser("query", help="Run FTS query against kb.db")
+    p_kb_query.add_argument("query", type=str, help="FTS5 MATCH query string")
+    p_kb_query.add_argument("--source", type=str, default=None, help="Filter source")
+    p_kb_query.add_argument("--start", type=str, default=None, help="Start date YYYY-MM-DD inclusive")
+    p_kb_query.add_argument("--end", type=str, default=None, help="End date YYYY-MM-DD inclusive")
+    p_kb_query.add_argument("--author", type=str, default=None, help="Case-insensitive author substring")
+    p_kb_query.add_argument("--limit", type=int, default=20, help="Max rows (clamped to 1..100)")
+    p_kb_query.add_argument("--json", action="store_true", help="Machine-readable JSON output")
 
     # ---------------------------------------------------------------- backup
     p_backup = sub.add_parser("backup", help="Archive and back up HOME data to NAS")

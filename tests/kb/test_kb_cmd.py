@@ -28,7 +28,7 @@ def test_kb_ingest_success(isolated_runtime, tmp_home: Path) -> None:
         app=config_module.build_app_config(data_root=home.data_dir, configs_dir=home.configs_dir),
     )
     rc = cmd_kb(
-        argparse.Namespace(kb_cmd="ingest", rebuild=True, since=None, sources="articles,tweets"),
+        argparse.Namespace(kb_cmd="ingest", rebuild=True, since=None, sources="articles,tweets,news-6551,hackernews"),
         home,
     )
     assert rc == 0

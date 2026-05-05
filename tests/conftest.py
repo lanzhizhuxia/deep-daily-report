@@ -56,7 +56,7 @@ def tmp_home(tmp_path: Path) -> Path:
 
     data = home / "data"
     data.mkdir()
-    for sub in ("articles", "tweets", "tweets-nas", "news-6551", ".session-memory"):
+    for sub in ("articles", "tweets", "tweets-nas", "news-6551", "hackernews", ".session-memory"):
         (data / sub).mkdir()
     for parent in ("dailies", "dailies-dryrun"):
         (data / parent).mkdir()

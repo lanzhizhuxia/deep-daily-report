@@ -11,7 +11,14 @@ from typing import Any, Callable, Iterable, Literal
 from deep_daily.config import get_runtime
 
 from .dedup import merge_tweet
-from .normalize import NormalizedItem, normalize_article, normalize_tweet_bulk, normalize_tweet_curated
+from .normalize import (
+    NormalizedItem,
+    normalize_article,
+    normalize_hn,
+    normalize_news6551,
+    normalize_tweet_bulk,
+    normalize_tweet_curated,
+)
 from .refs import upsert_raw_ref
 from .schema import bootstrap_db, rebuild_db
 from .state import (
@@ -29,6 +36,8 @@ SOURCE_SPECS: dict[str, tuple[str, str, Normalizer]] = {
     "articles": ("article", "articles", normalize_article),
     "tweets": ("tweet", "tweets", normalize_tweet_curated),
     "tweets-nas": ("tweet", "tweets-nas", normalize_tweet_bulk),
+    "news-6551": ("news6551", "news-6551", normalize_news6551),
+    "hackernews": ("hn", "hackernews", normalize_hn),
 }
 
 JSONL_ERROR_THRESHOLD = 10
@@ -148,6 +157,11 @@ def collect_stats(db_path: Path) -> dict[str, object]:
             "date_range": {"earliest": None, "latest": None},
             "last_ingest": None,
             "db_size_bytes": 0,
+            "provenance_stats": {
+                "tweets_curated_only": 0,
+                "tweets_bulk_only": 0,
+                "tweets_merged": 0,
+            },
         }
     conn = sqlite3.connect(db_path)
     items_total = int(conn.execute("SELECT COUNT(*) FROM items").fetchone()[0])
@@ -156,6 +170,13 @@ def collect_stats(db_path: Path) -> dict[str, object]:
         for row in conn.execute("SELECT source, COUNT(*) FROM items GROUP BY source ORDER BY source")
     }
     date_row = conn.execute("SELECT MIN(event_ts), MAX(event_ts) FROM items").fetchone()
+    provenance_row = conn.execute(
+        "SELECT "
+        "SUM(CASE WHEN source='tweet' AND has_curated=1 AND has_bulk=0 THEN 1 ELSE 0 END), "
+        "SUM(CASE WHEN source='tweet' AND has_bulk=1 AND has_curated=0 THEN 1 ELSE 0 END), "
+        "SUM(CASE WHEN source='tweet' AND has_curated=1 AND has_bulk=1 THEN 1 ELSE 0 END) "
+        "FROM items"
+    ).fetchone()
     last_run_row = conn.execute(
         "SELECT run_id, started_ts, finished_ts, files_scanned, files_skipped, files_ok, files_failed, rows_inserted, rows_updated, rows_refs_added, ok "
         "FROM ingest_runs ORDER BY run_id DESC LIMIT 1"
@@ -182,6 +203,11 @@ def collect_stats(db_path: Path) -> dict[str, object]:
         "date_range": {"earliest": date_row[0], "latest": date_row[1]},
         "last_ingest": last_ingest,
         "db_size_bytes": db_path.stat().st_size,
+        "provenance_stats": {
+            "tweets_curated_only": int(provenance_row[0] or 0),
+            "tweets_bulk_only": int(provenance_row[1] or 0),
+            "tweets_merged": int(provenance_row[2] or 0),
+        },
     }
 
 
@@ -252,12 +278,46 @@ def _ingest_file(
 ) -> int:
     if source_key == "tweets-nas":
         return _ingest_tweets_nas_file(conn, path, mtime_iso, counters)
+    if source_key == "hackernews":
+        return _ingest_hackernews_file(conn, path, mtime_iso, counters)
 
     raw_json = json.loads(path.read_text(encoding="utf-8"))
+    if source_key == "news-6551":
+        return _ingest_news6551_file(conn, path, raw_json, normalizer, mtime_iso, counters)
     item = normalizer(path, raw_json)
     provenance = "curated" if source_key == "tweets" else "single"
     _store_item(conn, item, provenance=provenance, raw_path=str(path), raw_locator=".", raw_mtime=mtime_iso, counters=counters)
     return 1
+
+
+def _ingest_news6551_file(
+    conn: sqlite3.Connection,
+    path: Path,
+    raw_json: dict[str, Any],
+    normalizer: Normalizer,
+    mtime_iso: str,
+    counters: IngestCounters,
+) -> int:
+    rows_seen = 0
+    for group_key, records in raw_json.items():
+        if not isinstance(records, list):
+            continue
+        grouped_path = path.with_name(group_key)
+        for index, record in enumerate(records, start=1):
+            if not isinstance(record, dict):
+                raise ValueError(f"news-6551 record is not an object: {group_key}[{index}]")
+            item = normalizer(grouped_path, record)
+            _store_item(
+                conn,
+                item,
+                provenance="single",
+                raw_path=str(path),
+                raw_locator=group_key,
+                raw_mtime=mtime_iso,
+                counters=counters,
+            )
+            rows_seen += 1
+    return rows_seen
 
 
 def _ingest_tweets_nas_file(
@@ -293,6 +353,40 @@ def _ingest_tweets_nas_file(
                 now_ts=now_ts,
             )
 
+    if line_errors >= JSONL_ERROR_THRESHOLD:
+        raise ValueError(f"too many malformed JSONL lines: {line_errors}")
+    return rows_seen
+
+
+def _ingest_hackernews_file(
+    conn: sqlite3.Connection,
+    path: Path,
+    mtime_iso: str,
+    counters: IngestCounters,
+) -> int:
+    rows_seen = 0
+    line_errors = 0
+    with path.open("r", encoding="utf-8") as handle:
+        for line_no, line in enumerate(handle, start=1):
+            if not line.strip():
+                continue
+            try:
+                record = json.loads(line)
+                item = normalize_hn(path, record)
+            except (json.JSONDecodeError, KeyError, ValueError) as err:
+                line_errors += 1
+                logger.warning("Malformed hackernews line skipped: %s:%s (%s)", path, line_no, err)
+                continue
+            rows_seen += 1
+            _store_item(
+                conn,
+                item,
+                provenance="single",
+                raw_path=str(path),
+                raw_locator=str(line_no),
+                raw_mtime=mtime_iso,
+                counters=counters,
+            )
     if line_errors >= JSONL_ERROR_THRESHOLD:
         raise ValueError(f"too many malformed JSONL lines: {line_errors}")
     return rows_seen
@@ -510,12 +604,14 @@ def _get_ingest_file(conn: sqlite3.Connection, path: str) -> dict[str, Any] | No
 
 
 def _iter_files(base_dir: Path) -> Iterable[Path]:
+    if not base_dir.exists():
+        return []
     return sorted([*base_dir.glob("*.json"), *base_dir.glob("*.jsonl")])
 
 
 def _resolve_sources(sources: list[str] | None) -> list[str]:
     if not sources:
-        return ["articles", "tweets", "tweets-nas"]
+        return ["articles", "tweets", "tweets-nas", "news-6551", "hackernews"]
     invalid = [source for source in sources if source not in SOURCE_SPECS]
     if invalid:
         raise ValueError(f"Unsupported sources: {', '.join(invalid)}")
