@@ -6,11 +6,12 @@ import sqlite3
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Callable, Iterable
+from typing import Any, Callable, Iterable, Literal
 
 from deep_daily.config import get_runtime
 
-from .normalize import NormalizedItem, normalize_article, normalize_tweet_curated
+from .dedup import merge_tweet
+from .normalize import NormalizedItem, normalize_article, normalize_tweet_bulk, normalize_tweet_curated
 from .refs import upsert_raw_ref
 from .schema import bootstrap_db, rebuild_db
 from .state import (
@@ -27,7 +28,10 @@ Normalizer = Callable[[Path, dict[str, Any]], NormalizedItem]
 SOURCE_SPECS: dict[str, tuple[str, str, Normalizer]] = {
     "articles": ("article", "articles", normalize_article),
     "tweets": ("tweet", "tweets", normalize_tweet_curated),
+    "tweets-nas": ("tweet", "tweets-nas", normalize_tweet_bulk),
 }
+
+JSONL_ERROR_THRESHOLD = 10
 
 
 @dataclass(frozen=True)
@@ -209,25 +213,7 @@ def _ingest_source(
             counters.files_skipped += 1
             continue
         try:
-            raw_json = json.loads(path.read_text(encoding="utf-8"))
-            item = normalizer(path, raw_json)
-            inserted = _upsert_item(conn, item)
-            if inserted:
-                counters.rows_inserted += 1
-            else:
-                counters.rows_updated += 1
-            ref_added = upsert_raw_ref(
-                conn,
-                item.id,
-                "single",
-                str(path),
-                ".",
-                item.raw_hash,
-                mtime_iso,
-                now_utc_iso(),
-            )
-            if ref_added:
-                counters.rows_refs_added += 1
+            rows_seen = _ingest_file(conn, path, source_key, normalizer, mtime_iso, counters)
             record_ingest_file(
                 conn,
                 path=str(path),
@@ -235,7 +221,7 @@ def _ingest_source(
                 run_id=counters.run_id,
                 mtime=mtime_iso,
                 size=stat.st_size,
-                rows_seen=1,
+                rows_seen=rows_seen,
                 status="ok",
                 error=None,
             )
@@ -256,10 +242,125 @@ def _ingest_source(
             counters.files_failed += 1
 
 
-def _upsert_item(conn: sqlite3.Connection, item: NormalizedItem) -> bool:
-    existing = _get_item(conn, item.id)
+def _ingest_file(
+    conn: sqlite3.Connection,
+    path: Path,
+    source_key: str,
+    normalizer: Normalizer,
+    mtime_iso: str,
+    counters: IngestCounters,
+) -> int:
+    if source_key == "tweets-nas":
+        return _ingest_tweets_nas_file(conn, path, mtime_iso, counters)
+
+    raw_json = json.loads(path.read_text(encoding="utf-8"))
+    item = normalizer(path, raw_json)
+    provenance = "curated" if source_key == "tweets" else "single"
+    _store_item(conn, item, provenance=provenance, raw_path=str(path), raw_locator=".", raw_mtime=mtime_iso, counters=counters)
+    return 1
+
+
+def _ingest_tweets_nas_file(
+    conn: sqlite3.Connection,
+    path: Path,
+    mtime_iso: str,
+    counters: IngestCounters,
+) -> int:
+    rows_seen = 0
+    line_errors = 0
     now_ts = now_utc_iso()
+    with path.open("r", encoding="utf-8") as handle:
+        for line_no, line in enumerate(handle, start=1):
+            if not line.strip():
+                continue
+            try:
+                record = json.loads(line)
+                item = normalize_tweet_bulk(path, record)
+            except (json.JSONDecodeError, KeyError, ValueError) as err:
+                line_errors += 1
+                logger.warning("Malformed tweets-nas line skipped: %s:%s (%s)", path, line_no, err)
+                continue
+
+            rows_seen += 1
+            _store_item(
+                conn,
+                item,
+                provenance="bulk",
+                raw_path=str(path),
+                raw_locator=str(line_no),
+                raw_mtime=mtime_iso,
+                counters=counters,
+                now_ts=now_ts,
+            )
+
+    if line_errors >= JSONL_ERROR_THRESHOLD:
+        raise ValueError(f"too many malformed JSONL lines: {line_errors}")
+    return rows_seen
+
+
+def _store_item(
+    conn: sqlite3.Connection,
+    item: NormalizedItem,
+    *,
+    provenance: Literal["single", "curated", "bulk"],
+    raw_path: str,
+    raw_locator: str,
+    raw_mtime: str,
+    counters: IngestCounters,
+    now_ts: str | None = None,
+) -> None:
+    current_now = now_ts or now_utc_iso()
+    stored_item = item
+    if item.source == "tweet" and provenance in {"curated", "bulk"}:
+        existing = _get_item_by_source_native_id(conn, item.source, item.native_id)
+        existing_item = _item_from_row(existing, item.raw_hash) if existing is not None else None
+        if provenance == "curated":
+            tweet_provenance: Literal["curated", "bulk"] = "curated"
+        else:
+            tweet_provenance = "bulk"
+        stored_item = merge_tweet(existing_item, item, tweet_provenance)
+        stored_item = NormalizedItem(
+            id=stored_item.id,
+            source=stored_item.source,
+            native_id=stored_item.native_id,
+            event_ts=stored_item.event_ts,
+            fetched_ts=stored_item.fetched_ts,
+            author=stored_item.author,
+            title=stored_item.title,
+            body=stored_item.body,
+            body_zh=stored_item.body_zh,
+            url=stored_item.url,
+            category=stored_item.category,
+            relevance=stored_item.relevance,
+            has_curated=stored_item.has_curated,
+            has_bulk=stored_item.has_bulk,
+            preferred_src=stored_item.preferred_src,
+            raw_hash=item.raw_hash,
+        )
+
+    changed, inserted = _upsert_item(conn, stored_item, now_ts=current_now)
+    if inserted:
+        counters.rows_inserted += 1
+    elif changed:
+        counters.rows_updated += 1
+
+    upsert_raw_ref(
+        conn,
+        stored_item.id,
+        provenance,
+        raw_path,
+        raw_locator,
+        item.raw_hash,
+        raw_mtime,
+        current_now,
+    )
+    counters.rows_refs_added += 1
+
+
+def _upsert_item(conn: sqlite3.Connection, item: NormalizedItem, *, now_ts: str) -> tuple[bool, bool]:
+    existing = _get_item(conn, item.id)
     first_seen_ts = now_ts if existing is None else str(existing["first_seen_ts"])
+    changed = existing is None or _row_changed(existing, item)
     conn.execute(
         """
         INSERT INTO items (
@@ -304,17 +405,93 @@ def _upsert_item(conn: sqlite3.Connection, item: NormalizedItem) -> bool:
             now_ts,
         ),
     )
-    return existing is None
+    return changed, existing is None
 
 
 def _get_item(conn: sqlite3.Connection, item_id: str) -> dict[str, Any] | None:
     row = conn.execute(
-        "SELECT id, first_seen_ts FROM items WHERE id = ?",
+        "SELECT id, source, native_id, event_ts, fetched_ts, author, title, body, body_zh, url, category, relevance, has_curated, has_bulk, preferred_src, first_seen_ts, last_seen_ts FROM items WHERE id = ?",
         (item_id,),
     ).fetchone()
+    return _item_row_to_dict(row)
+
+
+def _get_item_by_source_native_id(
+    conn: sqlite3.Connection,
+    source: str,
+    native_id: str,
+) -> dict[str, Any] | None:
+    row = conn.execute(
+        "SELECT id, source, native_id, event_ts, fetched_ts, author, title, body, body_zh, url, category, relevance, has_curated, has_bulk, preferred_src, first_seen_ts, last_seen_ts FROM items WHERE source = ? AND native_id = ?",
+        (source, native_id),
+    ).fetchone()
+    return _item_row_to_dict(row)
+
+
+def _item_row_to_dict(row: sqlite3.Row | None) -> dict[str, Any] | None:
     if row is None:
         return None
-    return {"id": row[0], "first_seen_ts": row[1]}
+    keys = [
+        "id",
+        "source",
+        "native_id",
+        "event_ts",
+        "fetched_ts",
+        "author",
+        "title",
+        "body",
+        "body_zh",
+        "url",
+        "category",
+        "relevance",
+        "has_curated",
+        "has_bulk",
+        "preferred_src",
+        "first_seen_ts",
+        "last_seen_ts",
+    ]
+    return {key: row[key] for key in keys}
+
+
+def _item_from_row(row: dict[str, Any], raw_hash: str) -> NormalizedItem:
+    return NormalizedItem(
+        id=str(row["id"]),
+        source=str(row["source"]),
+        native_id=str(row["native_id"]),
+        event_ts=str(row["event_ts"]),
+        fetched_ts=str(row["fetched_ts"]),
+        author=row["author"],
+        title=row["title"],
+        body=row["body"],
+        body_zh=row["body_zh"],
+        url=row["url"],
+        category=row["category"],
+        relevance=row["relevance"],
+        has_curated=int(row["has_curated"]),
+        has_bulk=int(row["has_bulk"]),
+        preferred_src=str(row["preferred_src"]),
+        raw_hash=raw_hash,
+    )
+
+
+def _row_changed(existing: dict[str, Any], item: NormalizedItem) -> bool:
+    comparable = {
+        "source": item.source,
+        "native_id": item.native_id,
+        "event_ts": item.event_ts,
+        "fetched_ts": item.fetched_ts,
+        "author": item.author,
+        "title": item.title,
+        "body": item.body,
+        "body_zh": item.body_zh,
+        "url": item.url,
+        "category": item.category,
+        "relevance": item.relevance,
+        "has_curated": item.has_curated,
+        "has_bulk": item.has_bulk,
+        "preferred_src": item.preferred_src,
+    }
+    return any(existing[key] != value for key, value in comparable.items())
 
 
 def _get_ingest_file(conn: sqlite3.Connection, path: str) -> dict[str, Any] | None:
@@ -333,12 +510,12 @@ def _get_ingest_file(conn: sqlite3.Connection, path: str) -> dict[str, Any] | No
 
 
 def _iter_files(base_dir: Path) -> Iterable[Path]:
-    return sorted(base_dir.glob("*.json"))
+    return sorted([*base_dir.glob("*.json"), *base_dir.glob("*.jsonl")])
 
 
 def _resolve_sources(sources: list[str] | None) -> list[str]:
     if not sources:
-        return ["articles", "tweets"]
+        return ["articles", "tweets", "tweets-nas"]
     invalid = [source for source in sources if source not in SOURCE_SPECS]
     if invalid:
         raise ValueError(f"Unsupported sources: {', '.join(invalid)}")

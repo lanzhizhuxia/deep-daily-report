@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS items (
 
 CREATE INDEX IF NOT EXISTS idx_items_ts ON items(event_ts DESC);
 CREATE INDEX IF NOT EXISTS idx_items_src_ts ON items(source, event_ts DESC);
+CREATE INDEX IF NOT EXISTS idx_items_source_native_id ON items(source, native_id);
 CREATE INDEX IF NOT EXISTS idx_items_author ON items(author);
 CREATE INDEX IF NOT EXISTS idx_items_category ON items(category) WHERE category IS NOT NULL;
 

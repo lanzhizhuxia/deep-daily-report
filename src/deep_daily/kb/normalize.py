@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -92,6 +92,35 @@ def normalize_tweet_curated(path: Path, raw_json: dict[str, Any]) -> NormalizedI
     )
 
 
+def normalize_tweet_bulk(path: Path, record: dict[str, Any]) -> NormalizedItem:
+    native_id = _tweet_native_id(path, record)
+    body = _clean_text(record.get("content"))
+    reference_content = _clean_text(record.get("reference_content"))
+    if body is not None and reference_content is not None:
+        body = f"{body}\n\n---\n\n{reference_content}"
+    elif body is None:
+        body = reference_content
+
+    return NormalizedItem(
+        id=f"tweet:{native_id}",
+        source="tweet",
+        native_id=native_id,
+        event_ts=_normalize_bulk_timestamp(record.get("collected_at") or record.get("event_time")),
+        fetched_ts=_normalize_bulk_timestamp(record.get("collected_at") or record.get("event_time")),
+        author=_clean_text(record.get("handle")),
+        title=None,
+        body=body,
+        body_zh=_clean_text(record.get("content_zh")),
+        url=_clean_text(record.get("tweet_url")),
+        category=None,
+        relevance=_coerce_int(record.get("relevance")),
+        has_curated=0,
+        has_bulk=0,
+        preferred_src="single",
+        raw_hash=_raw_hash(record),
+    )
+
+
 def _tweet_native_id(path: Path, raw_json: dict[str, Any]) -> str:
     raw_id = _clean_text(raw_json.get("id"))
     if raw_id:
@@ -115,6 +144,17 @@ def _normalize_timestamp(value: Any) -> str:
         dt = datetime.fromisoformat(normalized)
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=UTC)
+    dt = dt.astimezone(UTC).replace(microsecond=0)
+    return dt.isoformat().replace("+00:00", "Z")
+
+
+def _normalize_bulk_timestamp(value: Any) -> str:
+    if not isinstance(value, str) or not value.strip():
+        raise KeyError("timestamp field missing")
+    normalized = value.strip()
+    dt = datetime.fromisoformat(normalized.replace("Z", "+00:00"))
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone(timedelta(hours=8)))
     dt = dt.astimezone(UTC).replace(microsecond=0)
     return dt.isoformat().replace("+00:00", "Z")
 
