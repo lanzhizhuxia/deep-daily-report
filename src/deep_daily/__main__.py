@@ -116,6 +116,21 @@ def build_parser() -> argparse.ArgumentParser:
         "--json", action="store_true", help="Machine-readable JSON output"
     )
 
+    # ---------------------------------------------------------------- backup
+    p_backup = sub.add_parser("backup", help="Archive and back up HOME data to NAS")
+    p_backup.add_argument("--dry-run", action="store_true", help="Print plan; write nothing")
+    p_backup.add_argument("--retention", type=int, default=None, help="Override retention count")
+    p_backup.add_argument(
+        "--skip-checksum",
+        action="store_true",
+        help="Skip sha256 verification before remote rename",
+    )
+    p_backup.add_argument(
+        "--force-unlock",
+        action="store_true",
+        help="Override stale lock checks and take the backup lock",
+    )
+
     # ------------------------------------------------------- migrate-legacy
     p_mig = sub.add_parser(
         "migrate-legacy", help="Copy runtime data from a legacy ~/.local/deep-daily layout"
@@ -198,6 +213,10 @@ def _run_home_required(cmd: str, args: argparse.Namespace) -> int:
         from deep_daily.commands.doctor_cmd import cmd_doctor
 
         return cmd_doctor(args, home)
+    if cmd == "backup":
+        from deep_daily.commands.backup_cmd import cmd_backup
+
+        return cmd_backup(args, home)
     if cmd == "migrate-legacy":
         from deep_daily.commands.migrate_legacy_cmd import cmd_migrate_legacy
 
