@@ -8,16 +8,17 @@ import subprocess
 from pathlib import Path
 
 from deep_daily.backup.errors import BackupValidationError
+from deep_daily.home import CONFIG_FILENAME, SENTINEL_NAME, HomeConfig
 
 logger = logging.getLogger("deep_daily.backup.archive")
 
 
-def make_archive(data_dir: Path, archive_path: Path, exclude_patterns: tuple[str, ...]) -> int:
+def make_archive(source_dir: Path, archive_path: Path, exclude_patterns: tuple[str, ...]) -> int:
     archive_path.parent.mkdir(parents=True, exist_ok=True)
     command = ["tar", "-czf", str(archive_path)]
     for pattern in exclude_patterns:
         command.extend(["--exclude", pattern])
-    command.extend(["-C", str(data_dir), "."])
+    command.extend(["-C", str(source_dir), "."])
     result = subprocess.run(command, check=False, capture_output=True, text=True)
     if result.returncode != 0:
         raise BackupValidationError(
@@ -36,12 +37,12 @@ def compute_sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-def estimate_directory_size(data_dir: Path, exclude_patterns: tuple[str, ...]) -> tuple[int, int]:
+def estimate_directory_size(source_dir: Path, exclude_patterns: tuple[str, ...]) -> tuple[int, int]:
     total_bytes = 0
     file_count = 0
-    for root, dirs, files in os.walk(data_dir):
+    for root, dirs, files in os.walk(source_dir):
         root_path = Path(root)
-        rel_root = root_path.relative_to(data_dir)
+        rel_root = root_path.relative_to(source_dir)
         kept_dirs: list[str] = []
         for dirname in dirs:
             rel = _to_match_path(rel_root / dirname, is_dir=True)
@@ -58,12 +59,15 @@ def estimate_directory_size(data_dir: Path, exclude_patterns: tuple[str, ...]) -
     return total_bytes, file_count
 
 
-def ensure_non_empty_data_dir(data_dir: Path, exclude_patterns: tuple[str, ...]) -> tuple[int, int]:
-    if not data_dir.exists() or not data_dir.is_dir():
-        raise BackupValidationError(f"data dir missing: {data_dir}")
-    total_bytes, file_count = estimate_directory_size(data_dir, exclude_patterns)
-    if file_count == 0:
-        raise BackupValidationError("refusing to back up empty dir.")
+def ensure_valid_home(home: HomeConfig, exclude_patterns: tuple[str, ...]) -> tuple[int, int]:
+    home_path = home.path
+    if not home_path.exists() or not home_path.is_dir():
+        raise BackupValidationError(f"HOME missing or not a directory: {home_path}")
+    if not (home_path / SENTINEL_NAME).exists():
+        raise BackupValidationError(f"not a valid HOME (missing {SENTINEL_NAME}): {home_path}")
+    if not (home_path / CONFIG_FILENAME).exists():
+        raise BackupValidationError(f"HOME missing {CONFIG_FILENAME}: {home_path}")
+    total_bytes, file_count = estimate_directory_size(home_path, exclude_patterns)
     return total_bytes, file_count
 
 

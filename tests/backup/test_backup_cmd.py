@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import subprocess
+import tarfile
 
 from deep_daily.commands.backup_cmd import cmd_backup
 from deep_daily.home import HomeConfig
@@ -73,12 +74,13 @@ def test_backup_missing_config_returns_1(tmp_path, capsys):
     assert "backup config missing" in capsys.readouterr().err
 
 
-def test_backup_empty_dir_returns_1(tmp_path, capsys):
+def test_backup_empty_data_dir_now_accepted(tmp_path, capsys):
     home = _mk_home(tmp_path, with_data=False)
     args = argparse.Namespace(dry_run=True, retention=None, skip_checksum=False, force_unlock=False)
     rc = cmd_backup(args, home)
-    assert rc == 1
-    assert "refusing to back up empty dir." in capsys.readouterr().err
+    out = capsys.readouterr().out
+    assert rc == 0
+    assert "[dry-run] deep_daily backup" in out
 
 
 def test_backup_lock_held_returns_4(monkeypatch, tmp_path, capsys):
@@ -91,3 +93,70 @@ def test_backup_lock_held_returns_4(monkeypatch, tmp_path, capsys):
     rc = cmd_backup(args, home)
     assert rc == 4
     assert "lock held" in capsys.readouterr().err
+
+
+def test_backup_dry_run_warns_when_env_present(tmp_path, capsys):
+    home = _mk_home(tmp_path)
+    (tmp_path / ".env").write_text("SECRET=1\n", encoding="utf-8")
+    args = argparse.Namespace(dry_run=True, retention=None, skip_checksum=False, force_unlock=False)
+    rc = cmd_backup(args, home)
+    captured = capsys.readouterr()
+    assert rc == 0
+    assert "archive will include .env" in captured.err
+
+
+def test_backup_produces_home_root_archive_layout(monkeypatch, tmp_path):
+    home = _mk_home(tmp_path)
+    (tmp_path / ".env").write_text("SECRET=1\n", encoding="utf-8")
+    (tmp_path / "configs" / "readers.yaml").write_text("readers: []\n", encoding="utf-8")
+    (tmp_path / "state" / "backup").mkdir(parents=True)
+    (tmp_path / "state" / "backup" / "old.json").write_text("{}", encoding="utf-8")
+    (tmp_path / "logs" / "run.log").write_text("log\n", encoding="utf-8")
+
+    from contextlib import contextmanager
+
+    @contextmanager
+    def fake_lock(*_args, **_kwargs):
+        yield None
+
+    monkeypatch.setattr("deep_daily.commands.backup_cmd.backup_lock", fake_lock)
+    monkeypatch.setattr(
+        "deep_daily.commands.backup_cmd.clean_stale_remote_parts",
+        lambda **kwargs: None,
+    )
+    monkeypatch.setattr(
+        "deep_daily.commands.backup_cmd.upload_archive",
+        lambda **kwargs: (kwargs["remote_dir"] + "/" + kwargs["archive_name"], kwargs.get("local_sha256")),
+    )
+    monkeypatch.setattr(
+        "deep_daily.commands.backup_cmd.prune_remote_archives",
+        lambda **kwargs: None,
+    )
+
+    from deep_daily.commands import backup_cmd as mod
+
+    preserved: dict[str, str] = {}
+    real_make_archive = mod.make_archive
+
+    def make_and_copy(source_dir, archive_path, excludes):
+        size = real_make_archive(source_dir, archive_path, excludes)
+        copy_path = archive_path.with_suffix(archive_path.suffix + ".copy")
+        copy_path.write_bytes(archive_path.read_bytes())
+        preserved["copy"] = str(copy_path)
+        return size
+
+    monkeypatch.setattr(mod, "make_archive", make_and_copy)
+
+    args = argparse.Namespace(dry_run=False, retention=None, skip_checksum=True, force_unlock=False)
+    rc = cmd_backup(args, home)
+    assert rc == 0, f"cmd_backup failed: rc={rc}"
+
+    with tarfile.open(preserved["copy"], "r:gz") as tar:
+        names = tar.getnames()
+
+    assert "./config.yaml" in names
+    assert "./.deep-daily-home" in names
+    assert "./.env" in names
+    assert "./configs/readers.yaml" in names
+    assert not any(n.startswith("./state/") for n in names)
+    assert not any(n.startswith("./logs/") for n in names)

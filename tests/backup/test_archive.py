@@ -2,44 +2,115 @@ from __future__ import annotations
 
 import tarfile
 
-from deep_daily.backup.archive import ensure_non_empty_data_dir, make_archive
+import pytest
+
+from deep_daily.backup.archive import ensure_valid_home, make_archive
+from deep_daily.backup.errors import BackupValidationError
+from deep_daily.home import HomeConfig
 
 
-def test_make_archive_excludes_configured_paths(tmp_path):
+CONFIG = """\
+schema_version: 1
+reader:
+  name: test
+"""
+
+
+def _mk_home(tmp_path, *, with_data: bool = True):
+    (tmp_path / ".deep-daily-home").write_text("ok\n", encoding="utf-8")
+    (tmp_path / "config.yaml").write_text(CONFIG, encoding="utf-8")
+    (tmp_path / "configs").mkdir()
+    (tmp_path / "logs").mkdir()
     data_dir = tmp_path / "data"
+    data_dir.mkdir()
+    if with_data:
+        (data_dir / "articles").mkdir()
+        (data_dir / "articles" / "keep.json").write_text("{}", encoding="utf-8")
+    return HomeConfig.load(tmp_path)
+
+
+def test_make_archive_rooted_at_home_with_home_files(tmp_path):
+    home_dir = tmp_path / "home"
+    home_dir.mkdir()
+    (home_dir / ".deep-daily-home").write_text("ok\n", encoding="utf-8")
+    (home_dir / "config.yaml").write_text("schema_version: 1\n", encoding="utf-8")
+    (home_dir / ".env").write_text("SECRET=1\n", encoding="utf-8")
+    (home_dir / "configs").mkdir()
+    (home_dir / "configs" / "readers.yaml").write_text("readers: []\n", encoding="utf-8")
+    data_dir = home_dir / "data"
+    data_dir.mkdir()
+    (data_dir / "articles").mkdir()
+    (data_dir / "articles" / "keep.json").write_text("{}", encoding="utf-8")
+
+    archive_path = tmp_path / "backup.tar.gz"
+    make_archive(home_dir, archive_path, ())
+
+    with tarfile.open(archive_path, "r:gz") as tar:
+        names = tar.getnames()
+
+    assert "./config.yaml" in names
+    assert "./.deep-daily-home" in names
+    assert "./.env" in names
+    assert "./configs/readers.yaml" in names
+    assert "./data/articles/keep.json" in names
+
+
+def test_make_archive_applies_default_excludes_for_state_and_logs(tmp_path):
+    home_dir = tmp_path / "home"
+    home_dir.mkdir()
+    (home_dir / "config.yaml").write_text("x: 1\n", encoding="utf-8")
+    data_dir = home_dir / "data"
+    data_dir.mkdir()
     keep_file = data_dir / "articles" / "keep.json"
-    excluded_file = data_dir / "dailies" / ".pipeline" / "2026-05-05" / "cache.json"
+    pipeline_file = data_dir / "dailies" / ".pipeline" / "2026-05-05" / "cache.json"
     dryrun_file = data_dir / "dailies-dryrun" / "out.html"
     session_file = data_dir / ".session-memory" / "memo.txt"
-    for path in [keep_file, excluded_file, dryrun_file, session_file]:
+    state_file = home_dir / "state" / "backup" / "last.json"
+    logs_file = home_dir / "logs" / "run.log"
+    for path in [keep_file, pipeline_file, dryrun_file, session_file, state_file, logs_file]:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(path.name, encoding="utf-8")
 
     archive_path = tmp_path / "backup.tar.gz"
     make_archive(
-        data_dir,
+        home_dir,
         archive_path,
-        ("dailies/.pipeline/**", "dailies-dryrun/**", ".session-memory/**"),
+        (
+            "state/**",
+            "logs/**",
+            "data/dailies/.pipeline/**",
+            "data/dailies-dryrun/**",
+            "data/.session-memory/**",
+        ),
     )
 
     with tarfile.open(archive_path, "r:gz") as tar:
         names = tar.getnames()
 
-    assert "./articles/keep.json" in names
-    assert "./dailies/.pipeline/2026-05-05/cache.json" not in names
-    assert "./dailies-dryrun/out.html" not in names
-    assert "./.session-memory/memo.txt" not in names
+    assert "./data/articles/keep.json" in names
+    assert "./config.yaml" in names
+    assert "./data/dailies/.pipeline/2026-05-05/cache.json" not in names
+    assert "./data/dailies-dryrun/out.html" not in names
+    assert "./data/.session-memory/memo.txt" not in names
+    assert "./state/backup/last.json" not in names
+    assert "./logs/run.log" not in names
 
 
-def test_ensure_non_empty_data_dir_rejects_empty_after_exclusions(tmp_path):
-    data_dir = tmp_path / "data"
-    only_excluded = data_dir / "dailies-dryrun" / "x.txt"
-    only_excluded.parent.mkdir(parents=True, exist_ok=True)
-    only_excluded.write_text("x", encoding="utf-8")
+def test_ensure_valid_home_accepts_empty_data_dir(tmp_path):
+    home = _mk_home(tmp_path, with_data=False)
+    total_bytes, file_count = ensure_valid_home(home, ())
+    assert file_count >= 2
+    assert total_bytes > 0
 
-    try:
-        ensure_non_empty_data_dir(data_dir, ("dailies-dryrun/**",))
-    except Exception as err:
-        assert str(err) == "refusing to back up empty dir."
-    else:
-        raise AssertionError("expected empty-dir validation error")
+
+def test_ensure_valid_home_rejects_missing_sentinel(tmp_path):
+    (tmp_path / "config.yaml").write_text(CONFIG, encoding="utf-8")
+    (tmp_path / "configs").mkdir()
+    (tmp_path / "data").mkdir()
+    (tmp_path / "logs").mkdir()
+    (tmp_path / ".deep-daily-home").write_text("ok\n", encoding="utf-8")
+    home = HomeConfig.load(tmp_path)
+    (tmp_path / ".deep-daily-home").unlink()
+
+    with pytest.raises(BackupValidationError, match="missing .deep-daily-home"):
+        ensure_valid_home(home, ())

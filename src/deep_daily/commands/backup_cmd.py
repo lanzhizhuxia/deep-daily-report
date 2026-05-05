@@ -5,7 +5,7 @@ import logging
 import sys
 import time
 
-from deep_daily.backup.archive import compute_sha256, ensure_non_empty_data_dir, make_archive
+from deep_daily.backup.archive import compute_sha256, ensure_valid_home, make_archive
 from deep_daily.backup.config import backup_state_dir, load_backup_config
 from deep_daily.backup.errors import BackupError
 from deep_daily.backup.retention import prune_remote_archives
@@ -22,10 +22,16 @@ def cmd_backup(args: argparse.Namespace, home: HomeConfig) -> int:
         retention = int(getattr(args, "retention", None) or config.retention)
         archive_name = f"<INSTANCE_NAME>-{archive_timestamp()}.tar.gz"
         state_dir = backup_state_dir(home)
-        data_dir = home.data_dir
+        source_dir = home.path
         ssh_target = f"{config.nas_user}@{config.nas_host}"
         remote_final = f"{config.remote_dir}/{archive_name}"
-        estimated_bytes, estimated_files = ensure_non_empty_data_dir(data_dir, config.exclude)
+        estimated_bytes, estimated_files = ensure_valid_home(home, config.exclude)
+        if (source_dir / ".env").exists():
+            print(
+                "warning: archive will include .env (contains secrets); "
+                "NAS storage should be treated as sensitive",
+                file=sys.stderr,
+            )
 
         if getattr(args, "dry_run", False):
             _print_dry_run(
@@ -53,7 +59,7 @@ def cmd_backup(args: argparse.Namespace, home: HomeConfig) -> int:
                 remote_dir=config.remote_dir,
                 stale_age_hours=config.stale_part_age_hours,
             )
-            size_bytes = make_archive(data_dir, archive_path, config.exclude)
+            size_bytes = make_archive(source_dir, archive_path, config.exclude)
             sha256 = None if skip_checksum else compute_sha256(archive_path)
             remote_path, remote_sha = upload_archive(
                 archive_path=archive_path,

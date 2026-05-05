@@ -9,9 +9,11 @@ from deep_daily.backup.errors import BackupConfigError
 from deep_daily.home import HomeConfig
 
 DEFAULT_EXCLUDE = (
-    "dailies/.pipeline/**",
-    "dailies-dryrun/**",
-    ".session-memory/**",
+    "state/**",
+    "logs/**",
+    "data/dailies/.pipeline/**",
+    "data/dailies-dryrun/**",
+    "data/.session-memory/**",
 )
 DEFAULT_SSH_OPTIONS = (
     "ConnectTimeout=10",
