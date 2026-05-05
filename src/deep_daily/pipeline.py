@@ -1502,7 +1502,9 @@ def step3_write_topics(
                 f"### {prefix}{m['title']}\n来源: {m['source_name']}\n链接: {m['link']}\n\n{m.get('content_zh', '')}"
             )
             if m.get("link"):
-                citations.append({"title": m["title"], "url": m["link"]})
+                citations.append(
+                    {"title": _citation_label(m.get("title", "")), "url": m["link"]}
+                )
 
         user_prompt = f"""主题：{topic["topic_title"]}
 叙事角度：{topic.get("topic_angle", "")}
@@ -1934,7 +1936,7 @@ def step4_assemble_tabbed(
                         seen_urls.add(url)
         if citations:
             cite_items = [
-                f'<li><a href="{_escape_html(c["url"])}" target="_blank">{_escape_html(c.get("title", ""))}</a></li>'
+                f'<li><a href="{_escape_html(c["url"])}" target="_blank">{_escape_html(_citation_label(c.get("title", "")))}</a></li>'
                 for c in citations
             ]
             parts.append(
@@ -2007,6 +2009,25 @@ def _escape_html(text: str) -> str:
         .replace(">", "&gt;")
         .replace('"', "&quot;")
     )
+
+
+_CITATION_LABEL_MAX = 120
+
+
+def _citation_label(raw: str, max_chars: int = _CITATION_LABEL_MAX) -> str:
+    """Normalize a citation display label: collapse whitespace, truncate with ellipsis.
+
+    Upstream materials (especially tweets) may carry full body text in the `title` field.
+    Rendering that raw into HTML produces 2000+ char citation entries. This helper keeps
+    citations scannable (default 120 chars, ellipsis on overflow).
+    """
+    s = (raw or "").strip()
+    if not s:
+        return ""
+    s = re.sub(r"\s+", " ", s)
+    if len(s) <= max_chars:
+        return s
+    return s[:max_chars].rstrip() + "…"
 
 
 def _md_to_html(md_text: str) -> str:
