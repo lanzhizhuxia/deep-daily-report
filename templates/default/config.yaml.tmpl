@@ -1,0 +1,59 @@
+# deep-daily instance config. Rendered by `deep-daily init` from
+# templates/default/config.yaml.tmpl. Safe to edit after init.
+#
+# Placeholders rendered at init time: {reader_name}, {llm_backend},
+# {feishu_enabled}, {created_at}, {tool_version}.
+
+schema_version: 1
+
+instance:
+  name: "{reader_name}"
+  description: "Daily digest instance for {reader_name}"
+  created_at: "{created_at}"
+  tool_version: "{tool_version}"
+
+models:
+  filter: "google/gemini-2.5-flash-lite"
+  cluster: "google/gemini-2.5-flash-lite"
+  write: "google/gemini-3-pro-preview"
+  appendix: "openai/gpt-4.1-nano"
+
+llm:
+  backend: "{llm_backend}"
+
+reader:
+  name: "{reader_name}"
+  notify:
+    topic_id: "{reader_name}.daily-report"
+    event_id: "daily_report_ready"
+    dedupe_prefix: "daily_report_{reader_name}"
+
+profile:
+  auto_refresh: false
+  max_age_hours: 168
+
+collectors:
+  rss:
+    enabled: true
+    per_source_cap: 10
+  twitter:
+    enabled: true
+    long_threshold: 400
+    lane_cap_normal: 15
+    lane_cap_long: 8
+  twitter_nas:
+    enabled: false
+  news_6551:
+    enabled: false
+
+pipeline:
+  cleanup_max_age_days: 14
+  reported_events_ttl_days: 7
+  ongoing_cap_per_topic: 1
+  title_sim_match_threshold: 0.7
+
+publisher:
+  default: "file"
+  feishu:
+    enabled: {feishu_enabled}
+    webhook_env: "FEISHU_WEBHOOK"

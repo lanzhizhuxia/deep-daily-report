@@ -1,0 +1,16 @@
+# Topic governance for your daily digest.
+#
+# pinned: topics always included when relevant materials exist.
+# dynamic_max: upper bound on agent-managed dynamic topics (stored in
+#              <HOME>/data/dynamic-topics.json, never in this file).
+#
+# Each pinned topic supports:
+#   slug: stable identifier (used in URLs and cache keys)
+#   label: human-readable name
+#   keywords: substrings matched against material titles/content for bucketing
+#   news_search_terms: high-signal search terms passed to news APIs
+#   exclude_if_in: slugs to avoid duplicating material with
+
+dynamic_max: 4
+
+pinned: []
