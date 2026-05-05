@@ -1872,6 +1872,7 @@ def generate_for_reader(
     write_model: str,
     force: bool = False,
     resume: bool = False,
+    dry_run: bool = False,
 ) -> dict:
     """Steps 0-5 for a single reader.  Returns {success: bool, ...}."""
     rid = reader.reader_id
@@ -2091,15 +2092,21 @@ def generate_for_reader(
             topic_titles.append(f"{t['label']}: {tol}")
 
     # --- Step 5: Publish ---
-    step5_publish(
-        date_str, one_liner, topic_titles,
-        reader_config=reader,
-    )
+    # Dry-run skips publish: per PLAN v2.1 §5.5, no Feishu push, no side channel.
+    # Output HTML is still written to dailies-dryrun/ by the step5 caller below
+    # via reader.output_dir, which build_default_reader_from_home(dry_run=True)
+    # already swapped to the isolated tree.
+    if not dry_run:
+        step5_publish(
+            date_str, one_liner, topic_titles,
+            reader_config=reader,
+        )
 
     # --- Update global reported events (with lock) ---
+    # Dry-run skips this whole block: reported_events.json is prod state.
     material_map = {m["id"]: m for m in materials}
     published_materials = [material_map[mid] for mid in published_ids if mid in material_map]
-    if published_materials:
+    if published_materials and not dry_run:
         def _updater(store: Dict[str, Any]) -> Dict[str, Any]:
             return _update_reported_events(store, published_materials, date_str)
         try:
@@ -2109,14 +2116,17 @@ def generate_for_reader(
             print(f"  WARNING: reported_events.json update failed ({err})", file=sys.stderr)
 
     # --- Update per-reader delivered keys ---
-    delivered_path = reader.cache_dir.parent / "reported_events.json"
-    existing_delivered = _load_reader_delivered(delivered_path)
-    new_keys = set()
-    for m in published_materials:
-        mat_url = normalize_url(m.get("link", ""))
-        new_keys.add(_build_event_key(mat_url, m.get("title", "")))
-    if new_keys - existing_delivered:
-        _save_reader_delivered(delivered_path, existing_delivered | new_keys)
+    # Dry-run skips this too — delivered keys encode what the user has seen;
+    # letting dry-run write them would pollute next prod run's dedup state.
+    if not dry_run:
+        delivered_path = reader.cache_dir.parent / "reported_events.json"
+        existing_delivered = _load_reader_delivered(delivered_path)
+        new_keys = set()
+        for m in published_materials:
+            mat_url = normalize_url(m.get("link", ""))
+            new_keys.add(_build_event_key(mat_url, m.get("title", "")))
+        if new_keys - existing_delivered:
+            _save_reader_delivered(delivered_path, existing_delivered | new_keys)
 
     print(f"\n  Done: reader '{rid}' daily digest for {date_str} generated.")
     return {"success": True, "reader_id": rid}
@@ -2160,12 +2170,14 @@ def cmd_generate(args: argparse.Namespace) -> None:
         print(f'Shared collection failed: {err}', file=sys.stderr)
         sys.exit(1)
 
-    # Commit global first_seen after shared collection (independent of reader success)
-    try:
-        event_store = shared['event_store']
-        _atomic_write_json(config.REPORTED_EVENTS_PATH, event_store)
-    except Exception as err:
-        print(f"  WARNING: global first_seen commit failed ({err})", file=sys.stderr)
+    # Commit global first_seen after shared collection (independent of reader success).
+    # Dry-run skips this: per PLAN v2.1 §5.5, dry-run must not mutate reported_events.json.
+    if not dry_run:
+        try:
+            event_store = shared['event_store']
+            _atomic_write_json(config.REPORTED_EVENTS_PATH, event_store)
+        except Exception as err:
+            print(f"  WARNING: global first_seen commit failed ({err})", file=sys.stderr)
 
     # --- Per-reader generation (AC-14b: error isolation) ---
     results: list[dict] = []
@@ -2176,6 +2188,7 @@ def cmd_generate(args: argparse.Namespace) -> None:
                 write_model=write_model,
                 force=args.force,
                 resume=args.resume,
+                dry_run=dry_run,
             )
             results.append(result)
         except Exception as err:
