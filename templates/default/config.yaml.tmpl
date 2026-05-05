@@ -13,6 +13,12 @@ instance:
   created_at: "{created_at}"
   tool_version: "{tool_version}"
 
+# Per-step model IDs. Resolution precedence (first non-empty wins):
+#   WRITE:    --model CLI  >  $DAILY_WRITE_MODEL    >  models.write     >  built-in default
+#   FILTER:                   $DAILY_FILTER_MODEL   >  models.filter    >  built-in default
+#   CLUSTER:                  $DAILY_CLUSTER_MODEL  >  models.cluster   >  built-in default
+#   APPENDIX:                 $DAILY_APPENDIX_MODEL >  models.appendix  >  built-in default
+# Built-in defaults live in deep_daily.config.DEFAULT_MODELS (source of truth).
 models:
   filter: "google/gemini-2.5-flash-lite"
   cluster: "google/gemini-2.5-flash-lite"

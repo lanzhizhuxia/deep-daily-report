@@ -33,6 +33,7 @@ from deep_daily.dedup import normalize_title, normalize_url, title_similarity
 from deep_daily.protocols import LLMBackend, Publisher
 from deep_daily.urls import generate_daily_url
 
+
 def _atomic_write_json(path: Path, data: Any) -> None:
     """Write JSON atomically via tmp-rename."""
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -58,18 +59,36 @@ def _load_reported_events(path: Path | None = None) -> Dict[str, Any]:
     """Load reported_events.json. Returns empty store on missing/corrupt/schema mismatch."""
     p = path or config.REPORTED_EVENTS_PATH
     if not p.exists():
-        return {"schema_version": 1, "ttl_days": config.REPORTED_EVENTS_TTL_DAYS, "events": []}
+        return {
+            "schema_version": 1,
+            "ttl_days": config.REPORTED_EVENTS_TTL_DAYS,
+            "events": [],
+        }
     try:
         raw = json.loads(p.read_text(encoding="utf-8"))
         if not isinstance(raw, dict) or raw.get("schema_version") != 1:
-            print("  WARNING: reported_events.json schema mismatch, starting fresh", file=sys.stderr)
-            return {"schema_version": 1, "ttl_days": config.REPORTED_EVENTS_TTL_DAYS, "events": []}
+            print(
+                "  WARNING: reported_events.json schema mismatch, starting fresh",
+                file=sys.stderr,
+            )
+            return {
+                "schema_version": 1,
+                "ttl_days": config.REPORTED_EVENTS_TTL_DAYS,
+                "events": [],
+            }
         if not isinstance(raw.get("events"), list):
             raw["events"] = []
         return raw
     except (json.JSONDecodeError, OSError) as err:
-        print(f"  WARNING: reported_events.json load failed ({err}), starting fresh", file=sys.stderr)
-        return {"schema_version": 1, "ttl_days": config.REPORTED_EVENTS_TTL_DAYS, "events": []}
+        print(
+            f"  WARNING: reported_events.json load failed ({err}), starting fresh",
+            file=sys.stderr,
+        )
+        return {
+            "schema_version": 1,
+            "ttl_days": config.REPORTED_EVENTS_TTL_DAYS,
+            "events": [],
+        }
 
 
 def _load_reader_delivered(path: Path) -> set[str]:
@@ -99,10 +118,15 @@ def _prune_expired_events(store: Dict[str, Any], date_str: str) -> Dict[str, Any
     ttl = store.get("ttl_days", config.REPORTED_EVENTS_TTL_DAYS)
     cutoff = (current - datetime.timedelta(days=ttl)).isoformat()
     before = len(store["events"])
-    store["events"] = [e for e in store["events"] if e.get("last_reported", "") >= cutoff]
+    store["events"] = [
+        e for e in store["events"] if e.get("last_reported", "") >= cutoff
+    ]
     pruned = before - len(store["events"])
     if pruned:
-        print(f"  Cross-day dedup: pruned {pruned} expired events (TTL={ttl}d)", file=sys.stderr)
+        print(
+            f"  Cross-day dedup: pruned {pruned} expired events (TTL={ttl}d)",
+            file=sys.stderr,
+        )
     return store
 
 
@@ -114,7 +138,9 @@ def _build_event_key(url: str, title: str) -> str:
             parsed = urlparse(url)
             parts.append(parsed.netloc.lower())
             # Path skeleton: strip numeric segments for article ID invariance
-            path_parts = [seg for seg in parsed.path.split("/") if seg and not seg.isdigit()]
+            path_parts = [
+                seg for seg in parsed.path.split("/") if seg and not seg.isdigit()
+            ]
             parts.append("/".join(path_parts))
         except Exception:
             parts.append(url)
@@ -128,37 +154,138 @@ def _build_event_key(url: str, title: str) -> str:
 
 def _extract_entities(text: str) -> List[str]:
     """Extract likely entity names from text using regex patterns (no NLP deps)."""
-    _STOP_WORDS = frozenset({
-        "The", "This", "That", "These", "Those", "With", "From",
-        "What", "When", "Where", "How", "Why", "Which", "About",
-        "After", "Before", "Between", "Into", "Through", "During",
-        "New", "May", "Will", "Can", "Could", "Would", "Should",
-        "Also", "Just", "More", "Most", "Some", "All", "Any",
-        "Now", "But", "Not", "Yet", "Its", "Has", "Had", "Are",
-        "Was", "Were", "Been", "Being", "Have", "Does", "Did",
-        "For", "And", "Our", "Their", "Your", "His", "Her",
-        "Over", "Under", "Each", "Every", "Both", "Here", "There",
-        "While", "Since", "Until", "Still", "Very", "Much", "Many",
-        "First", "Last", "Next", "Other", "Such", "Only", "Even",
-        "Back", "Well", "Long", "High", "Low", "Big", "Top",
-        "Key", "Set", "Per", "Via", "Fee", "Tax", "Vote", "Move",
-        "Rise", "Drop", "Push", "Pull", "Data", "Plan", "Risk",
-        "Fund", "Deal", "Rule", "Swap", "Stake", "Price", "Trade",
-        "Launch", "Update", "Report", "Market", "Token",
-    })
+    _STOP_WORDS = frozenset(
+        {
+            "The",
+            "This",
+            "That",
+            "These",
+            "Those",
+            "With",
+            "From",
+            "What",
+            "When",
+            "Where",
+            "How",
+            "Why",
+            "Which",
+            "About",
+            "After",
+            "Before",
+            "Between",
+            "Into",
+            "Through",
+            "During",
+            "New",
+            "May",
+            "Will",
+            "Can",
+            "Could",
+            "Would",
+            "Should",
+            "Also",
+            "Just",
+            "More",
+            "Most",
+            "Some",
+            "All",
+            "Any",
+            "Now",
+            "But",
+            "Not",
+            "Yet",
+            "Its",
+            "Has",
+            "Had",
+            "Are",
+            "Was",
+            "Were",
+            "Been",
+            "Being",
+            "Have",
+            "Does",
+            "Did",
+            "For",
+            "And",
+            "Our",
+            "Their",
+            "Your",
+            "His",
+            "Her",
+            "Over",
+            "Under",
+            "Each",
+            "Every",
+            "Both",
+            "Here",
+            "There",
+            "While",
+            "Since",
+            "Until",
+            "Still",
+            "Very",
+            "Much",
+            "Many",
+            "First",
+            "Last",
+            "Next",
+            "Other",
+            "Such",
+            "Only",
+            "Even",
+            "Back",
+            "Well",
+            "Long",
+            "High",
+            "Low",
+            "Big",
+            "Top",
+            "Key",
+            "Set",
+            "Per",
+            "Via",
+            "Fee",
+            "Tax",
+            "Vote",
+            "Move",
+            "Rise",
+            "Drop",
+            "Push",
+            "Pull",
+            "Data",
+            "Plan",
+            "Risk",
+            "Fund",
+            "Deal",
+            "Rule",
+            "Swap",
+            "Stake",
+            "Price",
+            "Trade",
+            "Launch",
+            "Update",
+            "Report",
+            "Market",
+            "Token",
+        }
+    )
     entities: List[str] = []
     # English proper nouns: capitalized words 3+ chars, not at sentence start
-    for m in re.finditer(r'(?<!\. )(?<!\n)\b([A-Z][a-zA-Z]{2,20})\b', text):
+    for m in re.finditer(r"(?<!\. )(?<!\n)\b([A-Z][a-zA-Z]{2,20})\b", text):
         word = m.group(1)
         if word not in _STOP_WORDS:
             entities.append(word)
     # CJK entities: common suffixes for orgs/products/protocols
-    for m in re.finditer(r'([\u4e00-\u9fff]{2,6}(?:协议|平台|交易所|基金|公司|项目|网络|链|币))', text):
+    for m in re.finditer(
+        r"([\u4e00-\u9fff]{2,6}(?:协议|平台|交易所|基金|公司|项目|网络|链|币))", text
+    ):
         entities.append(m.group(1))
     return list(dict.fromkeys(entities))  # dedupe preserving order
 
 
-def _detect_new_signals(material: Dict[str, Any], matched_event: Dict[str, Any]) -> bool:
+def _detect_new_signals(
+    material: Dict[str, Any], matched_event: Dict[str, Any]
+) -> bool:
     """Return True if material brings new information vs the matched event."""
     # New URL not in canonical set
     mat_url = normalize_url(material.get("link", ""))
@@ -176,7 +303,7 @@ def _detect_new_signals(material: Dict[str, Any], matched_event: Dict[str, Any])
 
 def _llm_boundary_check(material: Dict[str, Any], matched_event: Dict[str, Any]) -> str:
     """LLM review for gray-zone similarity (0.4-0.7). Returns 'new' or 'ongoing'."""
-    model = os.environ.get("DAILY_FILTER_MODEL", "google/gemini-2.5-flash-lite")
+    model = config.get_effective_models().filter
     mat_title = material.get("title", "")
     mat_snippet = (material.get("content_zh") or "")[:200]
     event_title = matched_event.get("title_fingerprint", "")
@@ -187,7 +314,7 @@ def _llm_boundary_check(material: Dict[str, Any], matched_event: Dict[str, Any])
 已报道事件：
 - 标题指纹：{event_title}
 - 关键实体：{event_entities}
-- 报道次数：{matched_event.get('report_count', 1)}
+- 报道次数：{matched_event.get("report_count", 1)}
 
 新素材：
 - 标题：{mat_title}
@@ -198,14 +325,19 @@ def _llm_boundary_check(material: Dict[str, Any], matched_event: Dict[str, Any])
     try:
         raw = _call_llm(
             [{"role": "user", "content": prompt}],
-            model=model, temperature=0.0, max_tokens=64,
+            model=model,
+            temperature=0.0,
+            max_tokens=64,
         )
         answer = raw.strip().lower()
         if "same" in answer:
             return "ongoing"
         return "new"
     except Exception as err:
-        print(f"  Cross-day dedup: LLM boundary check failed ({err}), defaulting to new", file=sys.stderr)
+        print(
+            f"  Cross-day dedup: LLM boundary check failed ({err}), defaulting to new",
+            file=sys.stderr,
+        )
         return "new"  # fail-safe: don't suppress
 
 
@@ -373,8 +505,10 @@ def _get_llm() -> LLMBackend:
         from deep_daily.backends.openai_compat import OpenAICompatibleBackend
 
         return OpenAICompatibleBackend(
-            api_base=os.environ.get("LLM_API_BASE") or os.environ.get("LITELLM_API_BASE", ""),
-            api_key=os.environ.get("LLM_API_KEY") or os.environ.get("LITELLM_API_KEY", ""),
+            api_base=os.environ.get("LLM_API_BASE")
+            or os.environ.get("LITELLM_API_BASE", ""),
+            api_key=os.environ.get("LLM_API_KEY")
+            or os.environ.get("LITELLM_API_KEY", ""),
         )
     return _llm_backend
 
@@ -412,7 +546,10 @@ def _call_llm_with_retry(
 ) -> str:
     try:
         return _call_llm(
-            messages, model=model, temperature=temperature, max_tokens=max_tokens,
+            messages,
+            model=model,
+            temperature=temperature,
+            max_tokens=max_tokens,
         )
     except Exception as first_err:
         print(
@@ -425,6 +562,7 @@ def _call_llm_with_retry(
             temperature=retry_temperature,
             max_tokens=max_tokens,
         )
+
 
 def _repair_json_unescaped_quotes(text: str) -> str:
     """Fix unescaped double-quotes inside JSON string values.
@@ -536,7 +674,7 @@ def step0_classify_by_topic(
         for slug, keywords in topic_keywords.items():
             for kw in keywords:
                 if len(kw) <= 5:
-                    if re.search(rf'\b{re.escape(kw)}\b', search_text, re.IGNORECASE):
+                    if re.search(rf"\b{re.escape(kw)}\b", search_text, re.IGNORECASE):
                         buckets[slug].append(m)
                         matched_ids.add(m["id"])
                         material_matched = True
@@ -552,31 +690,38 @@ def step0_classify_by_topic(
     # Phase 2: priority-based exclusion (e.g., crypto excludes materials already in rwa/defi)
     exclude_rules: Dict[str, List[str]] = {}
     for t in all_topics:
-        eii = t.get('exclude_if_in', [])
+        eii = t.get("exclude_if_in", [])
         if eii:
-            exclude_rules[t['slug']] = eii
+            exclude_rules[t["slug"]] = eii
 
     if exclude_rules:
         for slug, exclude_slugs in exclude_rules.items():
             # Collect IDs already claimed by higher-priority topics
             claimed_ids: set = set()
             for es in exclude_slugs:
-                claimed_ids.update(m['id'] for m in buckets.get(es, []))
+                claimed_ids.update(m["id"] for m in buckets.get(es, []))
             if claimed_ids:
                 before = len(buckets[slug])
-                buckets[slug] = [m for m in buckets[slug] if m['id'] not in claimed_ids]
+                buckets[slug] = [m for m in buckets[slug] if m["id"] not in claimed_ids]
                 removed = before - len(buckets[slug])
                 if removed:
-                    print(f"  Step 0: '{slug}' excluded {removed} materials (already in {exclude_slugs})", file=sys.stderr)
+                    print(
+                        f"  Step 0: '{slug}' excluded {removed} materials (already in {exclude_slugs})",
+                        file=sys.stderr,
+                    )
 
     # Log counts
     for slug, items in buckets.items():
-        if slug != '_unclassified' or items:
+        if slug != "_unclassified" or items:
             print(f"  Step 0: topic '{slug}' → {len(items)} materials", file=sys.stderr)
-    if buckets['_unclassified']:
-        print(f"  Step 0: _unclassified → {len(buckets['_unclassified'])} materials", file=sys.stderr)
+    if buckets["_unclassified"]:
+        print(
+            f"  Step 0: _unclassified → {len(buckets['_unclassified'])} materials",
+            file=sys.stderr,
+        )
 
     return buckets
+
 
 def _sanitize_tweet_content(text: str) -> str:
     """Strip zero-width chars, Brave prefix noise, and truncate to 2000 chars."""
@@ -584,7 +729,7 @@ def _sanitize_tweet_content(text: str) -> str:
     for char in ("\u200b", "\u200c", "\u200d", "\ufeff"):
         text = text.replace(char, "")
     # Strip "Name · @handle · " prefix (Brave Search artifact)
-    text = re.sub(r'^[^·]+·\s*@\w+\s*·\s*', '', text).strip()
+    text = re.sub(r"^[^·]+·\s*@\w+\s*·\s*", "", text).strip()
     return text[:2000]
 
 
@@ -594,7 +739,10 @@ def _pipeline_dir(date_str: str, cache_dir: Path | None = None) -> Path:
 
 
 def _load_step_cache(
-    date_str: str, step: "int | str", lane: str = "", cache_dir: Path | None = None,
+    date_str: str,
+    step: "int | str",
+    lane: str = "",
+    cache_dir: Path | None = None,
 ) -> Optional[Any]:
     """Load cached step result if it exists."""
     suffix = f"-{lane}" if lane else ""
@@ -608,11 +756,17 @@ def _load_step_cache(
 
 
 def _save_step_cache(
-    date_str: str, step: "int | str", data: Any, lane: str = "", cache_dir: Path | None = None,
+    date_str: str,
+    step: "int | str",
+    data: Any,
+    lane: str = "",
+    cache_dir: Path | None = None,
 ) -> None:
     """Save step result to pipeline cache."""
     suffix = f"-{lane}" if lane else ""
-    _atomic_write_json(_pipeline_dir(date_str, cache_dir) / f"step-{step}{suffix}.json", data)
+    _atomic_write_json(
+        _pipeline_dir(date_str, cache_dir) / f"step-{step}{suffix}.json", data
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -916,7 +1070,10 @@ def step1_collect_materials(date_str: str) -> Dict[str, Any]:
             news_6551_count = len(news_materials)
             materials.extend(news_materials)
         except Exception as _ne:
-            print(f"  [6551 news] fetch_daily_news failed ({_ne}), skipping", file=sys.stderr)
+            print(
+                f"  [6551 news] fetch_daily_news failed ({_ne}), skipping",
+                file=sys.stderr,
+            )
 
     stats = {
         "date": date_str,
@@ -935,16 +1092,27 @@ def step1_collect_materials(date_str: str) -> Dict[str, Any]:
 def _split_lanes(materials: List[Dict]) -> Dict[str, List[Dict]]:
     """Split materials into 3 lanes: rss, tweet-long, tweet-normal."""
     rss = [m for m in materials if m["source"] != "twitter"]
-    tweet_long = [m for m in materials if m["source"] == "twitter" and m.get("content_len", 0) > config.TWEET_LONG_THRESHOLD]
-    tweet_normal = [m for m in materials if m["source"] == "twitter" and m.get("content_len", 0) <= config.TWEET_LONG_THRESHOLD]
+    tweet_long = [
+        m
+        for m in materials
+        if m["source"] == "twitter"
+        and m.get("content_len", 0) > config.TWEET_LONG_THRESHOLD
+    ]
+    tweet_normal = [
+        m
+        for m in materials
+        if m["source"] == "twitter"
+        and m.get("content_len", 0) <= config.TWEET_LONG_THRESHOLD
+    ]
     # Sort tweets by relevance desc, then cap
     tweet_normal.sort(key=lambda m: m.get("relevance", 0), reverse=True)
     tweet_long.sort(key=lambda m: m.get("relevance", 0), reverse=True)
     return {
         "rss": rss,  # all RSS, no cap
-        "tweet-normal": tweet_normal[:config.LANE_CAP_TWEET_NORMAL],
-        "tweet-long": tweet_long[:config.LANE_CAP_TWEET_LONG],
+        "tweet-normal": tweet_normal[: config.LANE_CAP_TWEET_NORMAL],
+        "tweet-long": tweet_long[: config.LANE_CAP_TWEET_LONG],
     }
+
 
 # ---------------------------------------------------------------------------
 # Step 1b: Reader-profile relevance filter
@@ -959,13 +1127,15 @@ def step1b_filter_by_relevance(
     if len(materials) <= 15:
         return materials
 
-    model = os.environ.get("DAILY_FILTER_MODEL", "google/gemini-2.5-flash-lite")
+    model = config.get_effective_models().filter
     reader_snippet = reader_snippet or _load_reader_profile()
 
     material_lines: List[str] = []
     for m in materials:
         snippet = (m.get("content_zh") or "")[:100].replace("\n", " ")
-        material_lines.append(f'{m["id"]}|{m["source_name"]}|{m["title"][:60]}|{snippet}')
+        material_lines.append(
+            f"{m['id']}|{m['source_name']}|{m['title'][:60]}|{snippet}"
+        )
 
     prompt = f"""读者画像：{reader_snippet}
 
@@ -992,7 +1162,9 @@ def step1b_filter_by_relevance(
     ]
 
     try:
-        raw = _call_llm_with_retry(messages, model=model, temperature=0.1, max_tokens=4096)
+        raw = _call_llm_with_retry(
+            messages, model=model, temperature=0.1, max_tokens=4096
+        )
         parsed = _parse_json_response(raw)
         scores = parsed.get("scores", {})
 
@@ -1008,10 +1180,14 @@ def step1b_filter_by_relevance(
             else:
                 dropped += 1
 
-        print(f"  Step 1b: relevance filter kept {len(filtered)}/{len(materials)} (dropped {dropped})")
+        print(
+            f"  Step 1b: relevance filter kept {len(filtered)}/{len(materials)} (dropped {dropped})"
+        )
         return filtered
     except Exception as err:
-        print(f"  Step 1b: relevance filter failed ({err}), keeping all", file=sys.stderr)
+        print(
+            f"  Step 1b: relevance filter failed ({err}), keeping all", file=sys.stderr
+        )
         return materials
 
 
@@ -1027,7 +1203,9 @@ def _generate_lightweight_daily(
     output_dir: Path | None = None,
 ) -> None:
     """Generate a minimal daily summary when < 3 materials are available."""
-    print(f"  Lightweight mode: only {len(materials)} material(s), skipping deep pipeline")
+    print(
+        f"  Lightweight mode: only {len(materials)} material(s), skipping deep pipeline"
+    )
     out_dir = output_dir or config.DAILIES_DIR
 
     if not materials:
@@ -1049,8 +1227,8 @@ def _generate_lightweight_daily(
     html = HTML_TEMPLATE.format(
         title=title,
         date=date_str,
-        sidebar_html='',
-        tab_nav_html='',
+        sidebar_html="",
+        tab_nav_html="",
         tab_panels_html=f'<div class="panorama">{panorama_html}</div>',
     )
 
@@ -1094,8 +1272,8 @@ def step2_cluster_topics(
     exclude_hint: str = "",
     reader_snippet: str | None = None,
 ) -> List[Dict[str, Any]]:
-    """Cluster materials into \u2264{max_topics} sub-angles within a topic via LLM."""
-    model = os.environ.get("DAILY_CLUSTER_MODEL", "google/gemini-2.5-flash-lite")
+    """Cluster materials into ≤{max_topics} sub-angles within a topic via LLM."""
+    model = config.get_effective_models().cluster
 
     # Build material summaries for prompt
     material_lines: List[str] = []
@@ -1117,7 +1295,7 @@ def step2_cluster_topics(
 
     user_prompt = f"""读者画像：{reader_snippet}
 
-你正在分析【{topic_label or '综合'}】主题下的素材。
+你正在分析【{topic_label or "综合"}】主题下的素材。
 
 {topic_context}
 
@@ -1148,20 +1326,28 @@ def step2_cluster_topics(
 - JSON 字符串值中不要使用双引号，如需引用请用「」"""
 
     messages = [
-        {"role": "system", "content": "你是一位资深科技编辑，擅长从零散信息中提炼叙事主线。"},
+        {
+            "role": "system",
+            "content": "你是一位资深科技编辑，擅长从零散信息中提炼叙事主线。",
+        },
         {"role": "user", "content": user_prompt},
     ]
 
     try:
         raw = _call_llm_with_retry(
-            messages, model=model, temperature=0.3, retry_temperature=0.5,
+            messages,
+            model=model,
+            temperature=0.3,
+            retry_temperature=0.5,
             max_tokens=4096,
         )
         topics = _parse_json_response(raw)
 
         # Validate
         if not isinstance(topics, list) or not (1 <= len(topics) <= max_topics):
-            raise ValueError(f"Expected 1-{max_topics} topics, got {len(topics) if isinstance(topics, list) else type(topics)}")
+            raise ValueError(
+                f"Expected 1-{max_topics} topics, got {len(topics) if isinstance(topics, list) else type(topics)}"
+            )
 
         # Validate material_ids reference real materials
         for topic in topics:
@@ -1178,11 +1364,16 @@ def step2_cluster_topics(
         return topics
 
     except Exception as err:
-        print(f"  Step 2: LLM clustering failed ({err}), using category fallback", file=sys.stderr)
+        print(
+            f"  Step 2: LLM clustering failed ({err}), using category fallback",
+            file=sys.stderr,
+        )
         return _fallback_cluster_by_source(materials, max_topics=max_topics)
 
 
-def _fallback_cluster_by_source(materials: List[Dict[str, Any]], *, max_topics: int = 4) -> List[Dict[str, Any]]:
+def _fallback_cluster_by_source(
+    materials: List[Dict[str, Any]], *, max_topics: int = 4
+) -> List[Dict[str, Any]]:
     """Fallback clustering: group articles by category/feed, tweets by handle."""
     groups: Dict[str, List[str]] = {}
     for m in materials:
@@ -1194,22 +1385,24 @@ def _fallback_cluster_by_source(materials: List[Dict[str, Any]], *, max_topics: 
 
     topics = []
     for i, (name, ids) in enumerate(groups.items(), 1):
-        topics.append({
-            "topic_title": name,
-            "topic_angle": f"来自 {name} 的内容汇总",
-            "material_ids": ids,
-            "priority": i,
-        })
+        topics.append(
+            {
+                "topic_title": name,
+                "topic_angle": f"来自 {name} 的内容汇总",
+                "material_ids": ids,
+                "priority": i,
+            }
+        )
 
     # Cap at 7 topics by merging smallest groups
     while len(topics) > max_topics:
         topics.sort(key=lambda t: len(t["material_ids"]))
         smallest = topics.pop(0)
         # Keep the larger group's name instead of always renaming to '综合'
-        if len(smallest['material_ids']) >= len(topics[0]['material_ids']):
-            topics[0]['topic_title'] = smallest['topic_title']
-            topics[0]['topic_angle'] = smallest['topic_angle']
-        topics[0]['material_ids'].extend(smallest['material_ids'])
+        if len(smallest["material_ids"]) >= len(topics[0]["material_ids"]):
+            topics[0]["topic_title"] = smallest["topic_title"]
+            topics[0]["topic_angle"] = smallest["topic_angle"]
+        topics[0]["material_ids"].extend(smallest["material_ids"])
 
     print(f"  Step 2 (fallback): grouped into {len(topics)} topics by source")
     return topics
@@ -1251,7 +1444,9 @@ def step3_write_topics(
 - 如果素材标记为【跟进】，只写新增进展，不复述已知背景。用一句话概括「此前已报道：XXX」即可。"""
 
     def _write_single_topic(topic: Dict[str, Any]) -> Dict[str, Any]:
-        topic_materials = [material_map[mid] for mid in topic["material_ids"] if mid in material_map]
+        topic_materials = [
+            material_map[mid] for mid in topic["material_ids"] if mid in material_map
+        ]
         if not topic_materials:
             return {
                 "topic_title": topic["topic_title"],
@@ -1270,9 +1465,9 @@ def step3_write_topics(
             if m.get("link"):
                 citations.append({"title": m["title"], "url": m["link"]})
 
-        user_prompt = f"""主题：{topic['topic_title']}
-叙事角度：{topic.get('topic_angle', '')}
-建议标签：{topic.get('action_tag', '')}
+        user_prompt = f"""主题：{topic["topic_title"]}
+叙事角度：{topic.get("topic_angle", "")}
+建议标签：{topic.get("action_tag", "")}
 
 以下是相关素材：
 
@@ -1296,7 +1491,10 @@ def step3_write_topics(
         raw = ""
         try:
             raw = _call_llm_with_retry(
-                messages, model=model, temperature=0.5, retry_temperature=0.6,
+                messages,
+                model=model,
+                temperature=0.5,
+                retry_temperature=0.6,
                 max_tokens=16384,
             )
             parsed = _parse_json_response(raw)
@@ -1360,7 +1558,10 @@ def step3_write_topics(
                     }
             raise
         except Exception as err:
-            print(f"    Topic '{topic['topic_title']}' failed ({err}), degrading to bullet points", file=sys.stderr)
+            print(
+                f"    Topic '{topic['topic_title']}' failed ({err}), degrading to bullet points",
+                file=sys.stderr,
+            )
             # Degrade to bullet-point summary
             bullet_lines = [f"## {topic['topic_title']}\n"]
             for m in topic_materials:
@@ -1379,8 +1580,7 @@ def step3_write_topics(
     results: List[Dict[str, Any]] = []
     with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
         future_map = {
-            executor.submit(_write_single_topic, t): i
-            for i, t in enumerate(topics)
+            executor.submit(_write_single_topic, t): i for i, t in enumerate(topics)
         }
         result_slots: Dict[int, Dict[str, Any]] = {}
         for future in concurrent.futures.as_completed(future_map):
@@ -1418,9 +1618,13 @@ def step4_assemble_tabbed(
     active_systems: str | None = None,
 ) -> Dict[str, Any]:
     """Assemble tab-based HTML with per-topic panels."""
-    panorama_model = os.environ.get('DAILY_APPENDIX_MODEL', 'openai/gpt-4.1-nano')
+    panorama_model = config.get_effective_models().appendix
     copy_icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>'
-    lane_labels = {"rss": "\U0001f4f0 \u6df1\u5ea6\u6587\u7ae0", "tweet-long": "\U0001f9f5 \u63a8\u7279\u6df1\u5ea6", "tweet-normal": "\U0001f426 \u63a8\u7279\u901f\u89c8"}
+    lane_labels = {
+        "rss": "\U0001f4f0 \u6df1\u5ea6\u6587\u7ae0",
+        "tweet-long": "\U0001f9f5 \u63a8\u7279\u6df1\u5ea6",
+        "tweet-normal": "\U0001f426 \u63a8\u7279\u901f\u89c8",
+    }
     out_dir = output_dir or config.DAILIES_DIR
 
     # --- Per-topic panorama generation ---
@@ -1429,54 +1633,76 @@ def step4_assemble_tabbed(
     all_topic_one_liners: List[str] = []
 
     for slug, tdata in topic_data.items():
-        if not tdata.get('lane_results'):
-            tdata['panorama_md'] = ''
-            tdata['one_liner'] = ''
+        if not tdata.get("lane_results"):
+            tdata["panorama_md"] = ""
+            tdata["one_liner"] = ""
             continue
         # Collect all topic results across lanes for this topic
         topic_results = []
-        for ln in ('rss', 'tweet-long', 'tweet-normal'):
-            topic_results.extend(tdata.get('lane_results', {}).get(ln, []))
+        for ln in ("rss", "tweet-long", "tweet-normal"):
+            topic_results.extend(tdata.get("lane_results", {}).get(ln, []))
         if not topic_results:
-            tdata['panorama_md'] = ''
-            tdata['one_liner'] = ''
+            tdata["panorama_md"] = ""
+            tdata["one_liner"] = ""
             continue
         summary_lines = [f"- {tr['topic_title']}" for tr in topic_results]
         prompt = (
             f"\u8bfb\u8005\u753b\u50cf\uff1a{reader_snippet}\n"
             f"\u8bfb\u8005\u6d3b\u8dc3\u7cfb\u7edf\uff1a{active_systems}\n\n"
             f"\u4ee5\u4e0b\u662f\u300c{tdata['label']}\u300d\u4e3b\u9898\u4e0b\u7684 {len(topic_results)} \u4e2a\u5b50\u89d2\u5ea6\uff1a\n"
-            + chr(10).join(summary_lines) + "\n\n"
+            + chr(10).join(summary_lines)
+            + "\n\n"
             "\u8bf7\u751f\u6210\uff1a1) panorama_md: 100-200\u5b57\u4e3b\u9898\u6982\u89c8(Markdown) 2) one_liner: \u4e00\u53e5\u8bdd\u6458\u8981(\u226430\u5b57)\n"
-            "\u8f93\u51fa\u4e25\u683c JSON: {\"panorama_md\": \"...\", \"one_liner\": \"...\"}\n"
+            '\u8f93\u51fa\u4e25\u683c JSON: {"panorama_md": "...", "one_liner": "..."}\n'
             "JSON \u5b57\u7b26\u4e32\u503c\u4e2d\u4e0d\u8981\u4f7f\u7528\u53cc\u5f15\u53f7\uff0c\u5982\u9700\u5f15\u7528\u8bf7\u7528\u300c\u300d"
         )
         try:
-            raw = _call_llm([{'role': 'user', 'content': prompt}], model=panorama_model, temperature=0.3, max_tokens=1024)
+            raw = _call_llm(
+                [{"role": "user", "content": prompt}],
+                model=panorama_model,
+                temperature=0.3,
+                max_tokens=1024,
+            )
             parsed = _parse_json_response(raw)
-            tdata['panorama_md'] = parsed.get('panorama_md', '')
-            tdata['one_liner'] = parsed.get('one_liner', '')[:30]
+            tdata["panorama_md"] = parsed.get("panorama_md", "")
+            tdata["one_liner"] = parsed.get("one_liner", "")[:30]
         except Exception as err:
             print(f"  Step 4: panorama for '{slug}' failed ({err})", file=sys.stderr)
-            tdata['panorama_md'] = '\u3001'.join(tr['topic_title'] for tr in topic_results)
-            tdata['one_liner'] = f"{tdata['label']}\uff1a{len(topic_results)}\u4e2a\u5b50\u89d2\u5ea6"[:30]
+            tdata["panorama_md"] = "\u3001".join(
+                tr["topic_title"] for tr in topic_results
+            )
+            tdata["one_liner"] = (
+                f"{tdata['label']}\uff1a{len(topic_results)}\u4e2a\u5b50\u89d2\u5ea6"[
+                    :30
+                ]
+            )
         all_topic_one_liners.append(f"{tdata['label']}: {tdata['one_liner']}")
 
     # --- Global one_liner ---
     if len(all_topic_one_liners) > 1:
         try:
             combine_prompt = (
-                '\u8bf7\u5c06\u4ee5\u4e0b\u5404\u4e3b\u9898\u4e00\u53e5\u8bdd\u6458\u8981\u5408\u5e76\u4e3a\u4e00\u4e2a\u5168\u5c40\u4e00\u53e5\u8bdd\u6458\u8981(\u226440\u5b57):\n'
-                + chr(10).join(all_topic_one_liners) + '\n'
-                '\u8f93\u51fa\u7eaf\u6587\u672c\uff0c\u4e0d\u8981JSON\u3002'
+                "\u8bf7\u5c06\u4ee5\u4e0b\u5404\u4e3b\u9898\u4e00\u53e5\u8bdd\u6458\u8981\u5408\u5e76\u4e3a\u4e00\u4e2a\u5168\u5c40\u4e00\u53e5\u8bdd\u6458\u8981(\u226440\u5b57):\n"
+                + chr(10).join(all_topic_one_liners)
+                + "\n"
+                "\u8f93\u51fa\u7eaf\u6587\u672c\uff0c\u4e0d\u8981JSON\u3002"
             )
-            global_one_liner = _call_llm([{'role': 'user', 'content': combine_prompt}], model=panorama_model, temperature=0.2, max_tokens=256).strip()[:40]
+            global_one_liner = _call_llm(
+                [{"role": "user", "content": combine_prompt}],
+                model=panorama_model,
+                temperature=0.2,
+                max_tokens=256,
+            ).strip()[:40]
         except Exception:
-            global_one_liner = all_topic_one_liners[0][:40] if all_topic_one_liners else '\u4eca\u65e5\u65e5\u62a5'
+            global_one_liner = (
+                all_topic_one_liners[0][:40]
+                if all_topic_one_liners
+                else "\u4eca\u65e5\u65e5\u62a5"
+            )
     elif all_topic_one_liners:
         global_one_liner = all_topic_one_liners[0][:40]
     else:
-        global_one_liner = '\u4eca\u65e5\u65e5\u62a5'
+        global_one_liner = "\u4eca\u65e5\u65e5\u62a5"
 
     # --- Build tab nav + sidebar ---
     first_active_slug = None
@@ -1486,41 +1712,52 @@ def step4_assemble_tabbed(
     # Track section IDs for sidebar sub-items (built during panel generation)
     sidebar_sub_items: Dict[str, List[str]] = {}  # slug -> list of sub-item HTML
     for t in topic_order:
-        slug = t['slug']
-        label = t['label']
+        slug = t["slug"]
+        label = t["label"]
         tdata = topic_data.get(slug, {})
-        has_content = bool(tdata.get('lane_results'))
+        has_content = bool(tdata.get("lane_results"))
         if has_content and first_active_slug is None:
             first_active_slug = slug
-        cls = 'active' if slug == first_active_slug else ('disabled' if not has_content else '')
-        tab_buttons.append(f'<button class="{cls}" data-target="tab-{slug}">{_escape_html(label)}</button>')
-        sidebar_items.append(f'<a class="side-item {cls}" data-target="tab-{slug}">{_escape_html(label)}</a>')
+        cls = (
+            "active"
+            if slug == first_active_slug
+            else ("disabled" if not has_content else "")
+        )
+        tab_buttons.append(
+            f'<button class="{cls}" data-target="tab-{slug}">{_escape_html(label)}</button>'
+        )
+        sidebar_items.append(
+            f'<a class="side-item {cls}" data-target="tab-{slug}">{_escape_html(label)}</a>'
+        )
         sidebar_sub_items[slug] = []
-    tab_nav_html = '<nav class="topic-tabs">' + ''.join(tab_buttons) + '</nav>'
+    tab_nav_html = '<nav class="topic-tabs">' + "".join(tab_buttons) + "</nav>"
 
     # --- Build tab panels ---
     tab_panels: List[str] = []
     for t in topic_order:
-        slug = t['slug']
+        slug = t["slug"]
         tdata = topic_data.get(slug, {})
-        has_content = bool(tdata.get('lane_results'))
-        active_cls = ' active' if slug == first_active_slug else ''
+        has_content = bool(tdata.get("lane_results"))
+        active_cls = " active" if slug == first_active_slug else ""
 
         if not has_content:
             tab_panels.append(
                 f'<div class="tab-panel{active_cls}" id="tab-{slug}">'
                 f'<div class="empty-panel">\u4eca\u65e5\u65e0\u300c{_escape_html(t["label"])}\u300d\u76f8\u5173\u5185\u5bb9</div>'
-                f'</div>'
+                f"</div>"
             )
             continue
 
         parts: List[str] = []
-        lane_results = tdata.get('lane_results', {})
-        panorama_html = _md_to_html(tdata.get('panorama_md', ''))
-        topic_one_liner = tdata.get('one_liner', '')
+        lane_results = tdata.get("lane_results", {})
+        panorama_html = _md_to_html(tdata.get("panorama_md", ""))
+        topic_one_liner = tdata.get("one_liner", "")
 
         # Topic title (visible on PC only as section header)
-        sub_count = sum(len(lane_results.get(ln, [])) for ln in ('rss', 'tweet-long', 'tweet-normal'))
+        sub_count = sum(
+            len(lane_results.get(ln, []))
+            for ln in ("rss", "tweet-long", "tweet-normal")
+        )
         parts.append(
             f'<div class="tab-panel-title">{_escape_html(t["label"])}'
             f'<span class="tp-badge">{sub_count} \u5b50\u89d2\u5ea6</span></div>'
@@ -1529,63 +1766,83 @@ def step4_assemble_tabbed(
         # Panorama
         parts.append(
             f'<div class="panorama">'
-            f'<h2>\u6982\u89c8</h2>'
-            f'<div>{panorama_html}</div>'
-            f'</div>'
+            f"<h2>\u6982\u89c8</h2>"
+            f"<div>{panorama_html}</div>"
+            f"</div>"
         )
 
         # Lane sections
         section_counter = 0
-        for lane_name in ('rss', 'tweet-long', 'tweet-normal'):
+        for lane_name in ("rss", "tweet-long", "tweet-normal"):
             lane_topics = lane_results.get(lane_name, [])
             if not lane_topics:
                 continue
             label = lane_labels.get(lane_name, lane_name)
-            parts.append(f'<div class="lane-section"><h2 class="lane-header">{_escape_html(label)}</h2>')
+            parts.append(
+                f'<div class="lane-section"><h2 class="lane-header">{_escape_html(label)}</h2>'
+            )
             for tr in lane_topics:
-                content_html = _md_to_html(tr['content_md'])
-                sec_id = f'sec-{slug}-{section_counter}'
+                content_html = _md_to_html(tr["content_md"])
+                sec_id = f"sec-{slug}-{section_counter}"
                 section_counter += 1
                 parts.append(
                     f'<div class="topic-section" id="{sec_id}">'
-                    f'<h2><span>{_escape_html(tr["topic_title"])}</span>'
+                    f"<h2><span>{_escape_html(tr['topic_title'])}</span>"
                     f'<button class="copy-btn" title="\u590d\u5236\u672c\u8282\u5185\u5bb9">{copy_icon}<span class="copy-label">\u5df2\u590d\u5236</span></button></h2>'
                     f'<div class="topic-content">{content_html}</div>'
-                    f'</div>'
+                    f"</div>"
                 )
                 # Collect sidebar sub-item for this section
                 sidebar_sub_items[slug].append(
                     f'<a class="side-sub" data-target="{sec_id}">{_escape_html(tr["topic_title"][:20])}</a>'
                 )
-            parts.append('</div>')
+            parts.append("</div>")
 
         # Per-topic appendix
-        appendix_mats = tdata.get('appendix_materials', [])
+        appendix_mats = tdata.get("appendix_materials", [])
         if appendix_mats:
             APPENDIX_CAP = 50
-            appendix_sorted = sorted(appendix_mats, key=lambda m: (-m.get('relevance', 0), m.get('time', '')))[:APPENDIX_CAP]
+            appendix_sorted = sorted(
+                appendix_mats, key=lambda m: (-m.get("relevance", 0), m.get("time", ""))
+            )[:APPENDIX_CAP]
             total_overflow = len(appendix_mats)
             from collections import OrderedDict
+
             handle_groups: Dict[str, List[Dict]] = OrderedDict()
             for m in appendix_sorted:
-                handle = (m.get('tweet_meta', {}) or {}).get('handle', '') or m.get('source_name', 'Other')
+                handle = (m.get("tweet_meta", {}) or {}).get("handle", "") or m.get(
+                    "source_name", "Other"
+                )
                 handle_groups.setdefault(handle, []).append(m)
             # LLM summarize per handle
             handle_summaries: Dict[str, str] = {}
             try:
-                summary_model = os.environ.get('DAILY_APPENDIX_MODEL', 'openai/gpt-4.1-nano')
+                summary_model = config.get_effective_models().appendix
                 handle_lines: List[str] = []
                 for handle, tweets in handle_groups.items():
-                    tweet_texts = [((m.get('content_zh') or m.get('title', ''))[:150]).replace('\n', ' ') for m in tweets]
-                    handle_lines.append(f'@{handle} ({len(tweets)}\u6761): ' + ' | '.join(tweet_texts))
+                    tweet_texts = [
+                        ((m.get("content_zh") or m.get("title", ""))[:150]).replace(
+                            "\n", " "
+                        )
+                        for m in tweets
+                    ]
+                    handle_lines.append(
+                        f"@{handle} ({len(tweets)}\u6761): " + " | ".join(tweet_texts)
+                    )
                 summary_prompt = (
-                    '\u4ee5\u4e0b\u662f\u591a\u4e2a\u63a8\u7279\u8d26\u53f7\u4eca\u65e5\u53d1\u5e03\u7684\u63a8\u6587\u6458\u8981\u3002\n'
-                    '\u8bf7\u4e3a\u6bcf\u4e2a\u8d26\u53f7\u751f\u6210\u4e00\u53e5\u8bdd\u4e2d\u6587\u89c2\u70b9\u603b\u7ed3\uff0815-30\u5b57\uff09\u3002\n\n'
-                    + chr(10).join(handle_lines) + '\n\n'
+                    "\u4ee5\u4e0b\u662f\u591a\u4e2a\u63a8\u7279\u8d26\u53f7\u4eca\u65e5\u53d1\u5e03\u7684\u63a8\u6587\u6458\u8981\u3002\n"
+                    "\u8bf7\u4e3a\u6bcf\u4e2a\u8d26\u53f7\u751f\u6210\u4e00\u53e5\u8bdd\u4e2d\u6587\u89c2\u70b9\u603b\u7ed3\uff0815-30\u5b57\uff09\u3002\n\n"
+                    + chr(10).join(handle_lines)
+                    + "\n\n"
                     '\u8f93\u51fa\u4e25\u683c JSON: {"\u8d26\u53f7handle": "\u4e00\u53e5\u8bdd\u603b\u7ed3", ...}\n'
-                    '\u53ea\u8f93\u51fa JSON\u3002'
+                    "\u53ea\u8f93\u51fa JSON\u3002"
                 )
-                raw = _call_llm([{'role': 'user', 'content': summary_prompt}], model=summary_model, temperature=0.2, max_tokens=2048)
+                raw = _call_llm(
+                    [{"role": "user", "content": summary_prompt}],
+                    model=summary_model,
+                    temperature=0.2,
+                    max_tokens=2048,
+                )
                 handle_summaries = _parse_json_response(raw)
                 if not isinstance(handle_summaries, dict):
                     handle_summaries = {}
@@ -1595,41 +1852,52 @@ def step4_assemble_tabbed(
             for handle, tweets in handle_groups.items():
                 items_html = []
                 for m in tweets:
-                    m_title = _escape_html(m.get('title', '')[:80])
-                    m_link = _escape_html(m.get('link', ''))
+                    m_title = _escape_html(m.get("title", "")[:80])
+                    m_link = _escape_html(m.get("link", ""))
                     if m_link:
-                        items_html.append(f'<li><a href="{m_link}" target="_blank">{m_title}</a></li>')
+                        items_html.append(
+                            f'<li><a href="{m_link}" target="_blank">{m_title}</a></li>'
+                        )
                     else:
-                        items_html.append(f'<li>{m_title}</li>')
+                        items_html.append(f"<li>{m_title}</li>")
                 handle_esc = _escape_html(handle)
-                summary_line = handle_summaries.get(handle, '') or handle_summaries.get(f'@{handle}', '')
-                summary_html = f'<br><span style="color:#666;font-size:0.9em">{_escape_html(summary_line)}</span>' if summary_line else ''
+                summary_line = handle_summaries.get(handle, "") or handle_summaries.get(
+                    f"@{handle}", ""
+                )
+                summary_html = (
+                    f'<br><span style="color:#666;font-size:0.9em">{_escape_html(summary_line)}</span>'
+                    if summary_line
+                    else ""
+                )
                 group_parts.append(
                     f'<div class="handle-group" style="margin-bottom:0.8em">'
-                    f'<strong>@{handle_esc} ({len(tweets)})</strong>{summary_html}'
+                    f"<strong>@{handle_esc} ({len(tweets)})</strong>{summary_html}"
                     f'<ul style="margin:0.2em 0">{chr(10).join(items_html)}</ul>'
-                    f'</div>'
+                    f"</div>"
                 )
-            summary_text = f'\U0001f4cb \u66f4\u591a\u63a8\u6587\uff08\u5c55\u793a{len(appendix_sorted)}/{total_overflow}\u6761\uff0c{len(handle_groups)}\u4e2a\u8d26\u53f7\uff09'
+            summary_text = f"\U0001f4cb \u66f4\u591a\u63a8\u6587\uff08\u5c55\u793a{len(appendix_sorted)}/{total_overflow}\u6761\uff0c{len(handle_groups)}\u4e2a\u8d26\u53f7\uff09"
             parts.append(
                 f'<details class="topic-section" style="margin-top:1.5em">'
                 f'<summary style="cursor:pointer;font-size:1.1em;font-weight:bold;padding:0.5em 0">{summary_text}</summary>'
                 f'<div class="topic-content" style="font-size:0.85em;line-height:1.5">{chr(10).join(group_parts)}</div>'
-                f'</details>'
+                f"</details>"
             )
 
         # Per-topic citations
         citations: List[Dict[str, str]] = []
         seen_urls: set = set()
-        for ln in ('rss', 'tweet-long', 'tweet-normal'):
+        for ln in ("rss", "tweet-long", "tweet-normal"):
             for tr in lane_results.get(ln, []):
-                for cite in tr.get('citations', []):
-                    url = cite.get('url', '')
+                for cite in tr.get("citations", []):
+                    url = cite.get("url", "")
                     if url and url not in seen_urls:
                         citations.append(cite)
                         seen_urls.add(url)
         if citations:
-            cite_items = [f'<li><a href="{_escape_html(c["url"])}" target="_blank">{_escape_html(c.get("title", ""))}</a></li>' for c in citations]
+            cite_items = [
+                f'<li><a href="{_escape_html(c["url"])}" target="_blank">{_escape_html(c.get("title", ""))}</a></li>'
+                for c in citations
+            ]
             parts.append(
                 f'<div class="citations"><h2>\u5f15\u7528\u6765\u6e90</h2><ul>{chr(10).join(cite_items)}</ul></div>'
             )
@@ -1649,11 +1917,11 @@ def step4_assemble_tabbed(
         final_sidebar.append(si)
         # Check if this is a side-item with data-target and append its sub-items
         for t in topic_order:
-            slug = t['slug']
+            slug = t["slug"]
             marker = f'data-target="tab-{slug}"'
             if marker in si and sidebar_sub_items.get(slug):
                 final_sidebar.extend(sidebar_sub_items[slug])
-    sidebar_html = '<aside class="sidebar">' + chr(10).join(final_sidebar) + '</aside>'
+    sidebar_html = '<aside class="sidebar">' + chr(10).join(final_sidebar) + "</aside>"
 
     html = HTML_TEMPLATE.format(
         title=title,
@@ -1666,26 +1934,30 @@ def step4_assemble_tabbed(
     # Save HTML
     html_path = out_dir / f"{date_str}.html"
     html_path.parent.mkdir(parents=True, exist_ok=True)
-    html_path.write_text(html, encoding='utf-8')
+    html_path.write_text(html, encoding="utf-8")
 
     # Save metadata JSON
     all_topic_results = []
     for tdata in topic_data.values():
-        for ln in ('rss', 'tweet-long', 'tweet-normal'):
-            all_topic_results.extend(tdata.get('lane_results', {}).get(ln, []))
+        for ln in ("rss", "tweet-long", "tweet-normal"):
+            all_topic_results.extend(tdata.get("lane_results", {}).get(ln, []))
     meta = {
-        'date': date_str,
-        'one_liner': global_one_liner,
-        'topics': [
-            {'slug': t['slug'], 'label': t['label'], 'one_liner': topic_data.get(t['slug'], {}).get('one_liner', '')}
+        "date": date_str,
+        "one_liner": global_one_liner,
+        "topics": [
+            {
+                "slug": t["slug"],
+                "label": t["label"],
+                "one_liner": topic_data.get(t["slug"], {}).get("one_liner", ""),
+            }
             for t in topic_order
         ],
-        'generated_at': datetime.datetime.now().isoformat(timespec='seconds'),
+        "generated_at": datetime.datetime.now().isoformat(timespec="seconds"),
     }
     _atomic_write_json(out_dir / f"{date_str}.json", meta)
 
     print(f"  Step 4: assembled tabbed HTML ({len(html)} bytes) + metadata")
-    return {'one_liner': global_one_liner, 'topic_data': topic_data}
+    return {"one_liner": global_one_liner, "topic_data": topic_data}
 
 
 def _escape_html(text: str) -> str:
@@ -1738,16 +2010,9 @@ def step5_publish(
     url = generate_daily_url(date_str)
 
     topic_lines = "\n".join(f"- {t}" for t in topic_titles)
-    push_text = (
-        f"深度日报 — {date_str}\n"
-        f"{one_liner}\n"
-        f"\n"
-        f"主题:\n"
-        f"{topic_lines}\n"
-    )
+    push_text = f"深度日报 — {date_str}\n{one_liner}\n\n主题:\n{topic_lines}\n"
     if url:
         push_text += f"\n查看全文: {url}\n"
-
 
     print(push_text)
 
@@ -1839,12 +2104,12 @@ def collect_shared(
     if resume:
         step1_data = _load_step_cache(date_str, 1)
         if step1_data:
-            print('  Step 1: loaded from cache')
+            print("  Step 1: loaded from cache")
     if step1_data is None:
         step1_data = step1_collect_materials(date_str)
         _save_step_cache(date_str, 1, step1_data)
 
-    materials = step1_data['materials']
+    materials = step1_data["materials"]
 
     # --- ISSUE-190: Cross-day freshness tagging ---
     event_store = _load_reported_events()
@@ -1879,13 +2144,13 @@ def generate_for_reader(
     cache_dir = reader.cache_dir
     out_dir = reader.output_dir
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"  Reader: {rid}")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
     # AC-14c: deepcopy shared materials to prevent cross-reader mutation
-    materials = copy.deepcopy(shared['materials'])
-    event_store = shared['event_store']
+    materials = copy.deepcopy(shared["materials"])
+    event_store = shared["event_store"]
 
     html_path = out_dir / f"{date_str}.html"
 
@@ -1901,21 +2166,23 @@ def generate_for_reader(
 
     # --- Step 0: Classify materials into topic buckets (per-reader topic_config) ---
     topic_config = reader.topic_config
-    all_topics = topic_config['pinned'] + topic_config['dynamic']
+    all_topics = topic_config["pinned"] + topic_config["dynamic"]
 
     step0_data = None
     if resume:
         step0_data = _load_step_cache(date_str, 0, cache_dir=cache_dir)
         if step0_data:
-            print('  Step 0: loaded from cache')
+            print("  Step 0: loaded from cache")
     if step0_data is None:
         buckets = step0_classify_by_topic(materials, topic_config)
-        step0_data = {'buckets': {slug: [m['id'] for m in mats] for slug, mats in buckets.items()}}
+        step0_data = {
+            "buckets": {slug: [m["id"] for m in mats] for slug, mats in buckets.items()}
+        }
         _save_step_cache(date_str, 0, step0_data, cache_dir=cache_dir)
     else:
-        material_map = {m['id']: m for m in materials}
+        material_map = {m["id"]: m for m in materials}
         buckets = {}
-        for slug, ids in step0_data.get('buckets', {}).items():
+        for slug, ids in step0_data.get("buckets", {}).items():
             buckets[slug] = [material_map[mid] for mid in ids if mid in material_map]
 
     # --- Per-topic pipeline ---
@@ -1924,19 +2191,25 @@ def generate_for_reader(
     published_ids: set = set()
 
     for t in all_topics:
-        slug = t['slug']
-        label = t['label']
+        slug = t["slug"]
+        label = t["label"]
         bucket_mats = buckets.get(slug, [])
         bucket_mats = _enforce_ongoing_cap(bucket_mats)
-        eii = t.get('exclude_if_in', [])
+        eii = t.get("exclude_if_in", [])
         if eii:
-            eii_labels = [tt['label'] for tt in all_topics if tt['slug'] in eii]
-            exclude_hint = ("注意：" + "、".join(eii_labels) +
-                " 相关素材已在独立主题中分析，本主题应避免生成与这些主题重叠的子角度。"
+            eii_labels = [tt["label"] for tt in all_topics if tt["slug"] in eii]
+            exclude_hint = (
+                "注意："
+                + "、".join(eii_labels)
+                + " 相关素材已在独立主题中分析，本主题应避免生成与这些主题重叠的子角度。"
             )
         else:
             exclude_hint = ""
-        topic_data[slug] = {'label': label, 'lane_results': {}, 'appendix_materials': []}
+        topic_data[slug] = {
+            "label": label,
+            "lane_results": {},
+            "appendix_materials": [],
+        }
 
         if not bucket_mats:
             print(f"\n  --- Topic: {label} (0 materials) --- skipped")
@@ -1948,14 +2221,18 @@ def generate_for_reader(
         lane_tweet_ids: set = set()
         for lane_mats in lanes.values():
             for m in lane_mats:
-                if m['source'] == 'twitter':
-                    lane_tweet_ids.add(m['id'])
-        topic_appendix = [m for m in bucket_mats if m['source'] == 'twitter' and m['id'] not in lane_tweet_ids]
-        topic_data[slug]['appendix_materials'] = topic_appendix
+                if m["source"] == "twitter":
+                    lane_tweet_ids.add(m["id"])
+        topic_appendix = [
+            m
+            for m in bucket_mats
+            if m["source"] == "twitter" and m["id"] not in lane_tweet_ids
+        ]
+        topic_data[slug]["appendix_materials"] = topic_appendix
 
         lane_results: Dict[str, List[Dict[str, Any]]] = {}
 
-        for lane_name in ('rss', 'tweet-long', 'tweet-normal'):
+        for lane_name in ("rss", "tweet-long", "tweet-normal"):
             lane_mats = lanes.get(lane_name, [])
             if not lane_mats:
                 continue
@@ -1963,21 +2240,35 @@ def generate_for_reader(
             cache_lane = f"{slug}-{lane_name}"
             print(f"  --- {lane_config['label']} ({len(lane_mats)} materials) ---")
 
-            skip_1b = lane_config['skip_1b']
+            skip_1b = lane_config["skip_1b"]
             if callable(skip_1b):
                 skip_1b = skip_1b(lane_mats)
             if not skip_1b:
                 step1b_data = None
                 if resume:
-                    step1b_data = _load_step_cache(date_str, '1b', lane=cache_lane, cache_dir=cache_dir)
+                    step1b_data = _load_step_cache(
+                        date_str, "1b", lane=cache_lane, cache_dir=cache_dir
+                    )
                     if step1b_data:
                         print(f"  Step 1b [{cache_lane}]: loaded from cache")
                 if step1b_data is None:
-                    lane_mats = step1b_filter_by_relevance(lane_mats, reader_snippet=reader.profile_snippet)
-                    _save_step_cache(date_str, '1b', {'materials': [m['id'] for m in lane_mats]}, lane=cache_lane, cache_dir=cache_dir)
+                    lane_mats = step1b_filter_by_relevance(
+                        lane_mats, reader_snippet=reader.profile_snippet
+                    )
+                    _save_step_cache(
+                        date_str,
+                        "1b",
+                        {"materials": [m["id"] for m in lane_mats]},
+                        lane=cache_lane,
+                        cache_dir=cache_dir,
+                    )
                 else:
-                    cached_ids = set(step1b_data.get('materials', []))
-                    lane_mats = [m for m in lane_mats if m['id'] in cached_ids] if cached_ids else lane_mats
+                    cached_ids = set(step1b_data.get("materials", []))
+                    lane_mats = (
+                        [m for m in lane_mats if m["id"] in cached_ids]
+                        if cached_ids
+                        else lane_mats
+                    )
             else:
                 print(f"  Step 1b [{cache_lane}]: skipped")
 
@@ -1985,19 +2276,28 @@ def generate_for_reader(
 
             step2_data = None
             if resume:
-                step2_data = _load_step_cache(date_str, 2, lane=cache_lane, cache_dir=cache_dir)
+                step2_data = _load_step_cache(
+                    date_str, 2, lane=cache_lane, cache_dir=cache_dir
+                )
                 if step2_data:
                     print(f"  Step 2 [{cache_lane}]: loaded from cache")
             if step2_data is None:
-                dynamic_max = min(lane_config['max_topics'], max(1, len(lane_mats) // 5))
+                dynamic_max = min(
+                    lane_config["max_topics"], max(1, len(lane_mats) // 5)
+                )
                 topics = step2_cluster_topics(
-                    lane_mats, date_str, max_topics=dynamic_max,
-                    topic_label=label, exclude_hint=exclude_hint,
+                    lane_mats,
+                    date_str,
+                    max_topics=dynamic_max,
+                    topic_label=label,
+                    exclude_hint=exclude_hint,
                     reader_snippet=reader.profile_snippet,
                 )
-                step2_data = {'topics': topics}
-                _save_step_cache(date_str, 2, step2_data, lane=cache_lane, cache_dir=cache_dir)
-            topics = step2_data['topics']
+                step2_data = {"topics": topics}
+                _save_step_cache(
+                    date_str, 2, step2_data, lane=cache_lane, cache_dir=cache_dir
+                )
+            topics = step2_data["topics"]
 
             for tp in topics:
                 for mid in tp.get("material_ids", []):
@@ -2005,25 +2305,32 @@ def generate_for_reader(
 
             step3_data = None
             if resume:
-                step3_data = _load_step_cache(date_str, 3, lane=cache_lane, cache_dir=cache_dir)
+                step3_data = _load_step_cache(
+                    date_str, 3, lane=cache_lane, cache_dir=cache_dir
+                )
                 if step3_data:
                     print(f"  Step 3 [{cache_lane}]: loaded from cache")
             if step3_data is None:
                 topic_results = step3_write_topics(
-                    topics, lane_mats, model=write_model,
+                    topics,
+                    lane_mats,
+                    model=write_model,
                     reader_snippet=reader.profile_snippet,
                     active_systems=reader.active_systems,
                 )
-                step3_data = {'topic_results': topic_results}
-                _save_step_cache(date_str, 3, step3_data, lane=cache_lane, cache_dir=cache_dir)
-            lane_results[lane_name] = step3_data['topic_results']
+                step3_data = {"topic_results": topic_results}
+                _save_step_cache(
+                    date_str, 3, step3_data, lane=cache_lane, cache_dir=cache_dir
+                )
+            lane_results[lane_name] = step3_data["topic_results"]
 
-        topic_data[slug]['lane_results'] = lane_results
+        topic_data[slug]["lane_results"] = lane_results
 
     # Lightweight check
     if total_lane_materials < 3:
         _generate_lightweight_daily(
-            date_str, materials,
+            date_str,
+            materials,
             output_dir=out_dir,
         )
         return {"success": True, "reader_id": rid, "lightweight": True}
@@ -2033,23 +2340,23 @@ def generate_for_reader(
     total_deep = sum(
         len(results)
         for tdata in topic_data.values()
-        for results in tdata.get('lane_results', {}).values()
+        for results in tdata.get("lane_results", {}).values()
     )
     if total_deep > GLOBAL_DEEP_ARTICLE_CAP:
         overflow = total_deep - GLOBAL_DEEP_ARTICLE_CAP
 
         def _topic_total(slug: str) -> int:
-            lr = topic_data.get(slug, {}).get('lane_results', {})
+            lr = topic_data.get(slug, {}).get("lane_results", {})
             return sum(len(v) for v in lr.values())
 
-        for trim_lane in ('tweet-normal', 'tweet-long'):
+        for trim_lane in ("tweet-normal", "tweet-long"):
             if overflow <= 0:
                 break
             for t in reversed(all_topics):
                 if overflow <= 0:
                     break
-                slug = t['slug']
-                lr = topic_data.get(slug, {}).get('lane_results', {})
+                slug = t["slug"]
+                lr = topic_data.get(slug, {}).get("lane_results", {})
                 lane_list = lr.get(trim_lane, [])
                 while lane_list and overflow > 0 and _topic_total(slug) > 1:
                     lane_list.pop()
@@ -2058,36 +2365,42 @@ def generate_for_reader(
             for t in reversed(all_topics):
                 if overflow <= 0:
                     break
-                slug = t['slug']
-                lr = topic_data.get(slug, {}).get('lane_results', {})
-                lane_list = lr.get('rss', [])
+                slug = t["slug"]
+                lr = topic_data.get(slug, {}).get("lane_results", {})
+                lane_list = lr.get("rss", [])
                 while len(lane_list) > 1 and overflow > 0 and _topic_total(slug) > 1:
                     lane_list.pop()
                     overflow -= 1
-        print(f'  Global cap: trimmed to {GLOBAL_DEEP_ARTICLE_CAP} deep articles (was {total_deep})')
+        print(
+            f"  Global cap: trimmed to {GLOBAL_DEEP_ARTICLE_CAP} deep articles (was {total_deep})"
+        )
 
     # --- Step 4 ---
     step4_result = None
     if resume:
         step4_result = _load_step_cache(date_str, 4, cache_dir=cache_dir)
         if step4_result and html_path.exists():
-            print('  Step 4: loaded from cache')
+            print("  Step 4: loaded from cache")
     if step4_result is None:
         step4_result = step4_assemble_tabbed(
-            date_str, topic_data, all_topics,
+            date_str,
+            topic_data,
+            all_topics,
             output_dir=out_dir,
             reader_snippet=reader.profile_snippet,
             active_systems=reader.active_systems,
         )
-        _save_step_cache(date_str, 4, {'one_liner': step4_result['one_liner']}, cache_dir=cache_dir)
+        _save_step_cache(
+            date_str, 4, {"one_liner": step4_result["one_liner"]}, cache_dir=cache_dir
+        )
 
-    one_liner = step4_result['one_liner']
+    one_liner = step4_result["one_liner"]
 
     topic_titles: List[str] = []
     for t in all_topics:
-        slug = t['slug']
+        slug = t["slug"]
         tdata = topic_data.get(slug, {})
-        tol = tdata.get('one_liner', '')
+        tol = tdata.get("one_liner", "")
         if tol:
             topic_titles.append(f"{t['label']}: {tol}")
 
@@ -2098,22 +2411,34 @@ def generate_for_reader(
     # already swapped to the isolated tree.
     if not dry_run:
         step5_publish(
-            date_str, one_liner, topic_titles,
+            date_str,
+            one_liner,
+            topic_titles,
             reader_config=reader,
         )
 
     # --- Update global reported events (with lock) ---
     # Dry-run skips this whole block: reported_events.json is prod state.
     material_map = {m["id"]: m for m in materials}
-    published_materials = [material_map[mid] for mid in published_ids if mid in material_map]
+    published_materials = [
+        material_map[mid] for mid in published_ids if mid in material_map
+    ]
     if published_materials and not dry_run:
+
         def _updater(store: Dict[str, Any]) -> Dict[str, Any]:
             return _update_reported_events(store, published_materials, date_str)
+
         try:
             _locked_update_reported_events(config.REPORTED_EVENTS_PATH, _updater)
-            print(f"  Cross-day dedup: indexed {len(published_materials)} materials", file=sys.stderr)
+            print(
+                f"  Cross-day dedup: indexed {len(published_materials)} materials",
+                file=sys.stderr,
+            )
         except Exception as err:
-            print(f"  WARNING: reported_events.json update failed ({err})", file=sys.stderr)
+            print(
+                f"  WARNING: reported_events.json update failed ({err})",
+                file=sys.stderr,
+            )
 
     # --- Update per-reader delivered keys ---
     # Dry-run skips this too — delivered keys encode what the user has seen;
@@ -2143,7 +2468,7 @@ def cmd_generate(args: argparse.Namespace) -> None:
         print(f"Invalid date format: {date_str} (expected YYYY-MM-DD)", file=sys.stderr)
         sys.exit(1)
 
-    write_model = args.model or os.environ.get('DAILY_WRITE_MODEL', 'google/gemini-3-pro-preview')
+    write_model = config.get_effective_models().write
 
     # --- Build reader list (v0.3.0: one HOME = one reader) ---
     # dry_run flag is introduced in Step 17 (__main__.py). Until then, args may
@@ -2167,24 +2492,28 @@ def cmd_generate(args: argparse.Namespace) -> None:
     try:
         shared = collect_shared(date_str, force=args.force, resume=args.resume)
     except Exception as err:
-        print(f'Shared collection failed: {err}', file=sys.stderr)
+        print(f"Shared collection failed: {err}", file=sys.stderr)
         sys.exit(1)
 
     # Commit global first_seen after shared collection (independent of reader success).
     # Dry-run skips this: per PLAN v2.1 §5.5, dry-run must not mutate reported_events.json.
     if not dry_run:
         try:
-            event_store = shared['event_store']
+            event_store = shared["event_store"]
             _atomic_write_json(config.REPORTED_EVENTS_PATH, event_store)
         except Exception as err:
-            print(f"  WARNING: global first_seen commit failed ({err})", file=sys.stderr)
+            print(
+                f"  WARNING: global first_seen commit failed ({err})", file=sys.stderr
+            )
 
     # --- Per-reader generation (AC-14b: error isolation) ---
     results: list[dict] = []
     for reader in readers:
         try:
             result = generate_for_reader(
-                shared, reader, date_str,
+                shared,
+                reader,
+                date_str,
                 write_model=write_model,
                 force=args.force,
                 resume=args.resume,
@@ -2193,7 +2522,9 @@ def cmd_generate(args: argparse.Namespace) -> None:
             results.append(result)
         except Exception as err:
             print(f"\n  FAILED: reader '{reader.reader_id}' — {err}", file=sys.stderr)
-            results.append({"success": False, "reader_id": reader.reader_id, "error": str(err)})
+            results.append(
+                {"success": False, "reader_id": reader.reader_id, "error": str(err)}
+            )
 
     # --- Summary ---
     succeeded = [r for r in results if r.get("success")]
@@ -2201,7 +2532,9 @@ def cmd_generate(args: argparse.Namespace) -> None:
     print(f"\nDone: {len(succeeded)}/{len(results)} readers succeeded.")
     if failed:
         for f in failed:
-            print(f"  FAILED: {f['reader_id']} — {f.get('error', 'unknown')}", file=sys.stderr)
+            print(
+                f"  FAILED: {f['reader_id']} — {f.get('error', 'unknown')}",
+                file=sys.stderr,
+            )
         if not succeeded:
             sys.exit(1)
-

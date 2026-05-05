@@ -41,7 +41,22 @@ models:
   appendix: "openai/gpt-4.1-nano"           # Step 4: appendix generation
 ```
 
-Override the write model at the command line with `--model <id>`.
+**Resolution precedence** (first non-empty wins):
+
+| Slot      | 1. CLI          | 2. Env var              | 3. `config.yaml`   | 4. Built-in default                 |
+|-----------|-----------------|-------------------------|--------------------|-------------------------------------|
+| write     | `--model <id>`  | `DAILY_WRITE_MODEL`     | `models.write`     | `google/gemini-3-pro-preview`       |
+| filter    | _(no flag)_     | `DAILY_FILTER_MODEL`    | `models.filter`    | `google/gemini-2.5-flash-lite`      |
+| cluster   | _(no flag)_     | `DAILY_CLUSTER_MODEL`   | `models.cluster`   | `google/gemini-2.5-flash-lite`      |
+| appendix  | _(no flag)_     | `DAILY_APPENDIX_MODEL`  | `models.appendix`  | `openai/gpt-4.1-nano`               |
+
+Built-in defaults are the source of truth, defined in
+`deep_daily.config.DEFAULT_MODELS`. The template mirrors them for visibility,
+but omitting any slot in `config.yaml` transparently falls through to the
+built-in default — you only need to list slots you want to override.
+
+Env vars remain supported as runtime overrides (e.g. for A/B testing one
+pipeline stage without editing `config.yaml`).
 
 ### `llm` (mapping)
 

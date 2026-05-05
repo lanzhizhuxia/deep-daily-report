@@ -80,6 +80,7 @@ def generate_profile(
         return False
 
     from deep_daily.config import get_runtime
+
     home = get_runtime().home
     reader_name = home.reader_name or home.path.name
 
@@ -107,6 +108,7 @@ def _session_memory_dir() -> Path:
     if env_override:
         return Path(env_override).expanduser()
     from deep_daily.config import get_runtime
+
     return get_runtime().home.data_dir / ".session-memory"
 
 
@@ -317,7 +319,9 @@ def _extract_role(work_lines: list[str]) -> str:
 
 
 def _generate_prompt_snippet(extracted_context: str) -> str:
-    model = os.environ.get("DAILY_FILTER_MODEL", "")
+    from deep_daily.config import get_effective_models
+
+    model = get_effective_models().filter
     prompt = (
         "Based on the following work context of a crypto industry professional, generate a concise "
         "reader profile (3-5 sentences) that describes:\n"

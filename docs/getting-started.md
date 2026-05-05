@@ -98,6 +98,10 @@ Common flags:
 - `--resume` — resume from the most recent cached pipeline step
 - `--publisher file|feishu` — override the default publisher
 - `--llm-backend openai|multikey` — override `llm.backend` from config.yaml
+- `--model <id>` — override the **write** model for this run (env var
+  `DAILY_WRITE_MODEL` and `config.yaml` `models.write` provide non-CLI ways
+  to do the same; see [config-reference.md](config-reference.md#models-mapping)
+  for full precedence rules)
 
 Output lands at `~/.my-daily/data/dailies/<date>.html` (or `dailies-dryrun/`
 under `--dry-run`).

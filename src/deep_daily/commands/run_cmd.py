@@ -86,6 +86,10 @@ def _resolve_publisher(home: HomeConfig, cli_override: str | None, *, dry_run: b
 
 
 def cmd_run(args: argparse.Namespace, home: HomeConfig) -> int:
+    from deep_daily.config import (
+        resolve_effective_models,
+        set_effective_models,
+    )
     from deep_daily.pipeline import cmd_generate, configure
     from deep_daily.profile_gen import maybe_refresh_profile
 
@@ -93,10 +97,17 @@ def cmd_run(args: argparse.Namespace, home: HomeConfig) -> int:
 
     if dry_run:
         print(
-            f"[dry-run] outputs \u2192 {home.data_dir / 'dailies-dryrun'}  "
+            f"[dry-run] outputs → {home.data_dir / 'dailies-dryrun'}  "
             f"(no publish, reported_events.json read-only)",
             file=sys.stderr,
         )
+
+    effective_models = resolve_effective_models(
+        raw_config=home.raw_config,
+        env=os.environ,
+        cli_write_model=getattr(args, "model", None),
+    )
+    set_effective_models(effective_models)
 
     llm = _resolve_llm_backend(home, getattr(args, "llm_backend", None))
     publisher = _resolve_publisher(

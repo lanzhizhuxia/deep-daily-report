@@ -76,5 +76,8 @@ def isolated_runtime(purge_deep_daily) -> Iterator[None]:
     """
     yield
     cfg = sys.modules.get("deep_daily.config")
-    if cfg is not None and hasattr(cfg, "_runtime"):
-        setattr(cfg, "_runtime", None)
+    if cfg is not None:
+        if hasattr(cfg, "_runtime"):
+            setattr(cfg, "_runtime", None)
+        if hasattr(cfg, "_effective_models"):
+            setattr(cfg, "_effective_models", None)

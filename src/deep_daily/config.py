@@ -25,7 +25,7 @@ import sys
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any, Callable, Mapping
 
 import yaml
 
@@ -47,6 +47,106 @@ TITLE_SIM_GRAY_LOW = 0.4
 DEFAULT_READER_SNIPPET = "读者是加密货币行业从业者，关注行业整体动态和技术发展。"
 
 DEFAULT_ACTIVE_SYSTEMS = "daily news digest pipeline"
+
+
+# ---------------------------------------------------------------- model config
+# Per Oracle v3 (session ses_2099a0e7fffeXJqUbsDN4TIX4r, 2026-05-05):
+# Per-instance config.yaml is the source of truth for model selection, with env
+# vars as backward-compat override and --model CLI flag kept for WRITE only.
+#
+# Precedence (high to low):
+#   WRITE:    --model CLI  → $DAILY_WRITE_MODEL    → config.yaml models.write    → DEFAULT_MODELS["write"]
+#   FILTER:   (no CLI)     → $DAILY_FILTER_MODEL   → config.yaml models.filter   → DEFAULT_MODELS["filter"]
+#   CLUSTER:  (no CLI)     → $DAILY_CLUSTER_MODEL  → config.yaml models.cluster  → DEFAULT_MODELS["cluster"]
+#   APPENDIX: (no CLI)     → $DAILY_APPENDIX_MODEL → config.yaml models.appendix → DEFAULT_MODELS["appendix"]
+#
+# These hardcoded defaults are the canonical fallbacks. templates/default/
+# config.yaml.tmpl mirrors these values for user visibility, but code owns the
+# truth. Do not duplicate literals across sites — always read from here.
+DEFAULT_MODELS: dict[str, str] = {
+    "filter": "google/gemini-2.5-flash-lite",
+    "cluster": "google/gemini-2.5-flash-lite",
+    "write": "google/gemini-3-pro-preview",
+    "appendix": "openai/gpt-4.1-nano",
+}
+
+
+@dataclass(frozen=True)
+class EffectiveModels:
+    """Resolved model choices for a single run.
+
+    Immutable snapshot — constructed once at command entry (run_cmd.py) after
+    HOME is loaded and CLI args are parsed. Pipeline code reads from this via
+    :func:`get_effective_models` rather than hitting env vars ad hoc.
+    """
+
+    filter: str
+    cluster: str
+    write: str
+    appendix: str
+
+
+def resolve_effective_models(
+    raw_config: Mapping[str, Any],
+    env: Mapping[str, str],
+    cli_write_model: str | None,
+) -> EffectiveModels:
+    """Resolve the effective model set per the precedence chain above.
+
+    Pure function — no I/O, no singleton mutation. Call once per run from
+    command entry and pass the result around (or store it via
+    :func:`set_effective_models`).
+    """
+    cfg = raw_config.get("models") or {}
+    if not isinstance(cfg, Mapping):
+        cfg = {}
+
+    def pick(slot: str, env_var: str, cli: str | None = None) -> str:
+        if cli:
+            return cli
+        env_val = env.get(env_var)
+        if env_val:
+            return env_val
+        cfg_val = cfg.get(slot)
+        if cfg_val:
+            return str(cfg_val)
+        return DEFAULT_MODELS[slot]
+
+    return EffectiveModels(
+        filter=pick("filter", "DAILY_FILTER_MODEL"),
+        cluster=pick("cluster", "DAILY_CLUSTER_MODEL"),
+        write=pick("write", "DAILY_WRITE_MODEL", cli_write_model),
+        appendix=pick("appendix", "DAILY_APPENDIX_MODEL"),
+    )
+
+
+_effective_models: EffectiveModels | None = None
+
+
+def set_effective_models(models: EffectiveModels) -> None:
+    """Bind the process-wide EffectiveModels. Idempotent on identical input,
+    rebinds otherwise (supports test reconfiguration)."""
+    global _effective_models
+    _effective_models = models
+
+
+def get_effective_models() -> EffectiveModels:
+    """Return the active EffectiveModels. Raises if :func:`set_effective_models`
+    has not been called — this means the CLI bootstrap skipped the resolution
+    step, which is a bug."""
+    if _effective_models is None:
+        raise RuntimeError(
+            "EffectiveModels has not been resolved. The CLI entry point must "
+            "call set_effective_models(resolve_effective_models(...)) before "
+            "invoking the pipeline. See config.py or run_cmd.py for the pattern."
+        )
+    return _effective_models
+
+
+def reset_effective_models_for_tests() -> None:
+    """Test-only helper. DO NOT call from production code."""
+    global _effective_models
+    _effective_models = None
 
 
 @dataclass
