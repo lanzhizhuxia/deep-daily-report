@@ -49,7 +49,7 @@ cp /path/to/legacy/topics.yaml           ~/.local/deep-daily-daily/configs/topic
 cp /path/to/legacy/sources.yaml          ~/.local/deep-daily-daily/configs/sources.yaml
 cp /path/to/legacy/kols.json             ~/.local/deep-daily-daily/configs/kols.json
 cp /path/to/legacy/active-systems.yaml   ~/.local/deep-daily-daily/configs/active-systems.yaml
-cp /path/to/legacy/news-6551-config.json ~/.local/deep-daily-daily/configs/news-6551-config.json
+cp /path/to/legacy/6551-config.json      ~/.local/deep-daily-daily/configs/6551-config.json
 cp /path/to/legacy/profile.yaml          ~/.local/deep-daily-daily/configs/profile.yaml
 ```
 

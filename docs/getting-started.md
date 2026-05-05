@@ -39,7 +39,7 @@ This creates:
 │   ├── sources.yaml
 │   ├── kols.json
 │   ├── active-systems.yaml
-│   ├── news-6551-config.json
+│   ├── 6551-config.json
 │   └── profile.yaml
 ├── data/               # runtime state (articles, tweets, output, caches)
 └── logs/

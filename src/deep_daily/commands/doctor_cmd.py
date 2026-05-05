@@ -80,7 +80,7 @@ OPTIONAL_CONFIG_FILES = (
     "kols.json",
     "profile.yaml",
     "active-systems.yaml",
-    "news-6551-config.json",
+    "6551-config.json",
 )
 
 REQUIRED_DATA_SUBDIRS = (

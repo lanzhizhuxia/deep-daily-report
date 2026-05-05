@@ -102,7 +102,7 @@ def test_init_lays_down_all_expected_files(tmp_path: Path):
         "configs/sources.yaml",
         "configs/kols.json",
         "configs/active-systems.yaml",
-        "configs/news-6551-config.json",
+        "configs/6551-config.json",
         "logs",
         "data",
     ]

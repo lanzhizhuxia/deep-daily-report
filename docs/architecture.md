@@ -27,7 +27,7 @@ the separation between "tool code" and "instance HOME" is load-bearing.
 │   ├── sources.yaml
 │   ├── kols.json
 │   ├── active-systems.yaml
-│   ├── news-6551-config.json
+│   ├── 6551-config.json
 │   └── profile.yaml
 ├── data/                 # runtime state (tool-managed)
 │   ├── articles/

@@ -68,7 +68,7 @@ def test_run_doctor_on_fresh_home_with_full_config_reports_no_errors(
             "kols.json": "[]\n",
             "profile.yaml": "prompt_snippet: hi\n",
             "active-systems.yaml": "systems: []\n",
-            "news-6551-config.json": "{}\n",
+            "6551-config.json": "{}\n",
         },
     )
 

@@ -214,7 +214,7 @@ The reader's persona. Drives tone, technical depth, and priority ordering
 in the write step. See `templates/default/configs/profile.yaml.tmpl` for
 the expected shape.
 
-### `active-systems.yaml` and `news-6551-config.json`
+### `active-systems.yaml` and `6551-config.json`
 
 Optional. Used only when the corresponding collectors are enabled.
 
