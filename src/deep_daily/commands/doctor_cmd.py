@@ -1,0 +1,460 @@
+"""``deep-daily doctor`` — instance health check.
+
+Per PLAN v2.1 §7 Step 16, §11.3 (env validation moved here from init_runtime).
+
+Responsibilities (one HOME, read-only):
+  1. Verify HOME layout matches §3.3 (sentinel, config.yaml, configs/, data/, logs/).
+  2. Validate ``config.yaml`` has the required top-level sections and types.
+  3. Report configs/ file presence (topics.yaml is required for a run; others warn).
+  4. Validate env vars from ``doctor.required_env`` / ``doctor.optional_env`` in
+     config.yaml, with sensible fallback defaults if the ``doctor`` section is
+     absent. Conditional requirements (e.g. FEISHU_WEBHOOK only when Feishu is
+     enabled) are enforced.
+  5. Confirm ``data/`` is writable by attempting a probe file create+delete.
+  6. ``--deep``: LLM reachability probe against the configured backend. Short
+     timeout, counts latency; any failure here is a WARNING, not an error, so
+     that a temporarily offline key does not turn doctor into an outage.
+
+Output:
+  - Default: human-readable with ✓/⚠/✗ prefixes + summary line.
+  - ``--json``: single JSON array of check records (for scripting / Phase 2
+    launchd pre-flight checks).
+
+Exit status:
+  0 if no errors (warnings OK), 1 if any error.
+
+Doctor never writes to prod runtime state. It may create and immediately remove
+a single probe file under ``data/`` to verify write permissions.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import sys
+import time
+from dataclasses import asdict, dataclass
+from pathlib import Path
+from typing import Any, Callable
+
+from deep_daily.home import CONFIG_FILENAME, HomeConfig, SENTINEL_NAME
+
+
+SEVERITY_OK = "ok"
+SEVERITY_WARN = "warn"
+SEVERITY_ERROR = "error"
+
+
+@dataclass
+class CheckResult:
+    name: str
+    severity: str
+    message: str
+    detail: str | None = None
+
+
+DEFAULT_REQUIRED_ENV = ("LLM_API_BASE", "LLM_API_KEY")
+DEFAULT_OPTIONAL_ENV = (
+    "LITELLM_API_BASE",
+    "LITELLM_API_KEY",
+    "OPENNEWS_TOKEN",
+    "FEISHU_WEBHOOK",
+    "RSS_SERVER_BASE",
+    "RSS_HMAC_SECRET",
+)
+
+REQUIRED_CONFIG_SECTIONS = (
+    "instance",
+    "models",
+    "llm",
+    "reader",
+    "collectors",
+    "pipeline",
+    "publisher",
+)
+
+REQUIRED_CONFIG_FILES = ("topics.yaml",)
+OPTIONAL_CONFIG_FILES = (
+    "sources.yaml",
+    "kols.json",
+    "profile.yaml",
+    "active-systems.yaml",
+    "news-6551-config.json",
+)
+
+REQUIRED_DATA_SUBDIRS = (
+    "articles",
+    "tweets",
+    "tweets-nas",
+    "news-6551",
+    "dailies",
+    "dailies-dryrun",
+)
+
+
+def _check_home_layout(home: HomeConfig) -> list[CheckResult]:
+    results: list[CheckResult] = []
+    path = home.path
+
+    if not (path / SENTINEL_NAME).exists():
+        results.append(
+            CheckResult(
+                "home.sentinel",
+                SEVERITY_ERROR,
+                f"missing {SENTINEL_NAME}",
+                str(path),
+            )
+        )
+    else:
+        results.append(CheckResult("home.sentinel", SEVERITY_OK, "present"))
+
+    if not (path / CONFIG_FILENAME).exists():
+        results.append(
+            CheckResult(
+                "home.config_yaml",
+                SEVERITY_ERROR,
+                "config.yaml missing",
+                str(path / CONFIG_FILENAME),
+            )
+        )
+    else:
+        results.append(CheckResult("home.config_yaml", SEVERITY_OK, "present"))
+
+    for sub in ("configs", "data", "logs"):
+        p = path / sub
+        if not p.is_dir():
+            results.append(
+                CheckResult(
+                    f"home.{sub}",
+                    SEVERITY_ERROR,
+                    f"{sub}/ directory missing",
+                    str(p),
+                )
+            )
+        else:
+            results.append(CheckResult(f"home.{sub}", SEVERITY_OK, f"{sub}/ present"))
+
+    return results
+
+
+def _check_config_schema(home: HomeConfig) -> list[CheckResult]:
+    raw = home.raw_config
+    results: list[CheckResult] = []
+
+    schema_version = raw.get("schema_version")
+    if schema_version == 1:
+        results.append(
+            CheckResult("config.schema_version", SEVERITY_OK, "schema_version=1")
+        )
+    else:
+        results.append(
+            CheckResult(
+                "config.schema_version",
+                SEVERITY_ERROR,
+                f"unsupported schema_version={schema_version!r}",
+            )
+        )
+
+    for section in REQUIRED_CONFIG_SECTIONS:
+        value = raw.get(section)
+        if value is None:
+            results.append(
+                CheckResult(
+                    f"config.{section}",
+                    SEVERITY_WARN,
+                    f"missing top-level '{section}' section",
+                )
+            )
+        elif not isinstance(value, dict):
+            results.append(
+                CheckResult(
+                    f"config.{section}",
+                    SEVERITY_ERROR,
+                    f"'{section}' must be a mapping, got {type(value).__name__}",
+                )
+            )
+        else:
+            results.append(CheckResult(f"config.{section}", SEVERITY_OK, "present"))
+
+    reader_name = str(raw.get("reader", {}).get("name") or "").strip()
+    if not reader_name:
+        results.append(
+            CheckResult(
+                "config.reader.name",
+                SEVERITY_ERROR,
+                "reader.name is empty — pipeline needs an identity string",
+            )
+        )
+
+    backend = str(raw.get("llm", {}).get("backend") or "").strip()
+    if backend not in ("openai", "multikey"):
+        results.append(
+            CheckResult(
+                "config.llm.backend",
+                SEVERITY_ERROR,
+                f"llm.backend must be openai|multikey, got {backend!r}",
+            )
+        )
+
+    return results
+
+
+def _check_config_files(home: HomeConfig) -> list[CheckResult]:
+    results: list[CheckResult] = []
+    configs = home.configs_dir
+    for name in REQUIRED_CONFIG_FILES:
+        p = configs / name
+        if p.exists():
+            results.append(
+                CheckResult(f"configs.{name}", SEVERITY_OK, f"{name} present")
+            )
+        else:
+            results.append(
+                CheckResult(
+                    f"configs.{name}",
+                    SEVERITY_ERROR,
+                    f"required {name} missing",
+                    str(p),
+                )
+            )
+    for name in OPTIONAL_CONFIG_FILES:
+        p = configs / name
+        if p.exists():
+            results.append(
+                CheckResult(f"configs.{name}", SEVERITY_OK, f"{name} present")
+            )
+        else:
+            results.append(
+                CheckResult(
+                    f"configs.{name}",
+                    SEVERITY_WARN,
+                    f"optional {name} missing",
+                    str(p),
+                )
+            )
+    return results
+
+
+def _check_env_vars(
+    home: HomeConfig, *, getenv: Callable[[str], str | None] = os.environ.get
+) -> list[CheckResult]:
+    results: list[CheckResult] = []
+    raw = home.raw_config
+    doctor_section = raw.get("doctor") or {}
+    required = tuple(doctor_section.get("required_env") or DEFAULT_REQUIRED_ENV)
+    optional = tuple(doctor_section.get("optional_env") or DEFAULT_OPTIONAL_ENV)
+
+    # LITELLM_* counts as a satisfying alias for LLM_* per backends/litellm_multikey.py.
+    for name in required:
+        value = getenv(name)
+        if value:
+            results.append(CheckResult(f"env.{name}", SEVERITY_OK, "set"))
+            continue
+        alias = None
+        if name == "LLM_API_BASE":
+            alias = "LITELLM_API_BASE"
+        elif name == "LLM_API_KEY":
+            alias = "LITELLM_API_KEY"
+        if alias and getenv(alias):
+            results.append(
+                CheckResult(
+                    f"env.{name}",
+                    SEVERITY_OK,
+                    f"satisfied via {alias}",
+                )
+            )
+        else:
+            results.append(
+                CheckResult(
+                    f"env.{name}",
+                    SEVERITY_ERROR,
+                    "required env var is not set",
+                )
+            )
+
+    for name in optional:
+        value = getenv(name)
+        results.append(
+            CheckResult(
+                f"env.{name}",
+                SEVERITY_OK if value else SEVERITY_WARN,
+                "set" if value else "not set (optional)",
+            )
+        )
+
+    publisher = raw.get("publisher") or {}
+    feishu = publisher.get("feishu") or {}
+    if feishu.get("enabled"):
+        webhook_env = feishu.get("webhook_env") or "FEISHU_WEBHOOK"
+        if not getenv(webhook_env):
+            results.append(
+                CheckResult(
+                    f"env.{webhook_env}",
+                    SEVERITY_ERROR,
+                    "Feishu publisher enabled but webhook env var is not set",
+                )
+            )
+
+    return results
+
+
+def _check_data_writable(home: HomeConfig) -> list[CheckResult]:
+    probe = home.data_dir / ".doctor-probe"
+    try:
+        home.data_dir.mkdir(parents=True, exist_ok=True)
+        probe.write_text("probe", encoding="utf-8")
+        probe.unlink()
+    except OSError as err:
+        return [
+            CheckResult(
+                "data.writable",
+                SEVERITY_ERROR,
+                f"data/ is not writable: {err}",
+                str(home.data_dir),
+            )
+        ]
+    for sub in REQUIRED_DATA_SUBDIRS:
+        p = home.data_dir / sub
+        if not p.is_dir():
+            return [
+                CheckResult(
+                    f"data.{sub}",
+                    SEVERITY_WARN,
+                    f"data/{sub}/ missing (init_runtime will create on first run)",
+                    str(p),
+                )
+            ]
+    return [CheckResult("data.writable", SEVERITY_OK, "writable + subdirs present")]
+
+
+def _check_llm_deep(
+    home: HomeConfig, *, getenv: Callable[[str], str | None] = os.environ.get
+) -> list[CheckResult]:
+    api_base = getenv("LLM_API_BASE") or getenv("LITELLM_API_BASE")
+    api_key = getenv("LLM_API_KEY") or getenv("LITELLM_API_KEY")
+    if not (api_base and api_key):
+        return [
+            CheckResult(
+                "llm.probe",
+                SEVERITY_WARN,
+                "skipped: LLM_API_BASE / LLM_API_KEY not set",
+            )
+        ]
+    try:
+        import urllib.error
+        import urllib.request
+    except ImportError:  # pragma: no cover — stdlib always available
+        return [CheckResult("llm.probe", SEVERITY_WARN, "urllib unavailable")]
+
+    url = api_base.rstrip("/") + "/models"
+    req = urllib.request.Request(
+        url,
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "User-Agent": "deep-daily doctor",
+        },
+    )
+    start = time.perf_counter()
+    try:
+        with urllib.request.urlopen(req, timeout=8) as resp:
+            elapsed_ms = int((time.perf_counter() - start) * 1000)
+            if 200 <= resp.status < 300:
+                return [
+                    CheckResult(
+                        "llm.probe",
+                        SEVERITY_OK,
+                        f"reachable ({resp.status}, {elapsed_ms}ms)",
+                    )
+                ]
+            return [
+                CheckResult(
+                    "llm.probe",
+                    SEVERITY_WARN,
+                    f"upstream returned HTTP {resp.status}",
+                )
+            ]
+    except urllib.error.URLError as err:
+        elapsed_ms = int((time.perf_counter() - start) * 1000)
+        return [
+            CheckResult(
+                "llm.probe",
+                SEVERITY_WARN,
+                f"unreachable after {elapsed_ms}ms: {err.reason}",
+            )
+        ]
+    except Exception as err:  # pragma: no cover — defensive against odd urllib errors
+        return [
+            CheckResult(
+                "llm.probe",
+                SEVERITY_WARN,
+                f"probe failed: {err}",
+            )
+        ]
+
+
+def run_doctor(
+    home: HomeConfig,
+    *,
+    deep: bool = False,
+    getenv: Callable[[str], str | None] = os.environ.get,
+) -> list[CheckResult]:
+    results: list[CheckResult] = []
+    results.extend(_check_home_layout(home))
+    results.extend(_check_config_schema(home))
+    results.extend(_check_config_files(home))
+    results.extend(_check_env_vars(home, getenv=getenv))
+    results.extend(_check_data_writable(home))
+    if deep:
+        results.extend(_check_llm_deep(home, getenv=getenv))
+    return results
+
+
+_SEVERITY_GLYPH = {
+    SEVERITY_OK: "✓",
+    SEVERITY_WARN: "⚠",
+    SEVERITY_ERROR: "✗",
+}
+
+
+def format_results_text(home: HomeConfig, results: list[CheckResult]) -> str:
+    lines: list[str] = []
+    lines.append(f"deep-daily doctor — {home.path}")
+    lines.append("")
+    errors = warns = oks = 0
+    for r in results:
+        glyph = _SEVERITY_GLYPH.get(r.severity, "?")
+        suffix = f"  ({r.detail})" if r.detail else ""
+        lines.append(f"  {glyph} {r.name}: {r.message}{suffix}")
+        if r.severity == SEVERITY_ERROR:
+            errors += 1
+        elif r.severity == SEVERITY_WARN:
+            warns += 1
+        else:
+            oks += 1
+    lines.append("")
+    lines.append(f"Summary: {oks} ok, {warns} warn, {errors} error")
+    return "\n".join(lines) + "\n"
+
+
+def format_results_json(home: HomeConfig, results: list[CheckResult]) -> str:
+    payload: dict[str, Any] = {
+        "home": str(home.path),
+        "checks": [asdict(r) for r in results],
+        "summary": {
+            "ok": sum(1 for r in results if r.severity == SEVERITY_OK),
+            "warn": sum(1 for r in results if r.severity == SEVERITY_WARN),
+            "error": sum(1 for r in results if r.severity == SEVERITY_ERROR),
+        },
+    }
+    return json.dumps(payload, ensure_ascii=False, indent=2) + "\n"
+
+
+def cmd_doctor(args: argparse.Namespace, home: HomeConfig) -> int:
+    results = run_doctor(home, deep=bool(getattr(args, "deep", False)))
+    if getattr(args, "json", False):
+        sys.stdout.write(format_results_json(home, results))
+    else:
+        sys.stdout.write(format_results_text(home, results))
+    has_error = any(r.severity == SEVERITY_ERROR for r in results)
+    return 1 if has_error else 0
