@@ -1,0 +1,11 @@
+{
+  "id": "abc123",
+  "link": "https://example.com/article",
+  "summary_zh": "摘要",
+  "insight_zh": "洞察",
+  "fetched_at": "2026-04-29T00:01:18",
+  "feed_title": "example-feed",
+  "title_zh": "中文标题",
+  "category": "rwa",
+  "relevance": 3
+}

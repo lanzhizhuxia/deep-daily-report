@@ -116,6 +116,24 @@ def build_parser() -> argparse.ArgumentParser:
         "--json", action="store_true", help="Machine-readable JSON output"
     )
 
+    # --------------------------------------------------------------------- kb
+    p_kb = sub.add_parser("kb", help="Knowledge base commands")
+    kb_sub = p_kb.add_subparsers(dest="kb_cmd", required=True)
+    p_kb_ingest = kb_sub.add_parser("ingest", help="Ingest raw files into kb.db")
+    p_kb_ingest.add_argument(
+        "--rebuild", action="store_true", help="Drop and recreate kb.db before ingest"
+    )
+    p_kb_ingest.add_argument(
+        "--since", type=str, default=None, help="Only process files since YYYY-MM-DD"
+    )
+    p_kb_ingest.add_argument(
+        "--sources", type=str, default=None, help="Comma-separated sources: articles,tweets"
+    )
+    p_kb_stats = kb_sub.add_parser("stats", help="Print kb stats")
+    p_kb_stats.add_argument(
+        "--json", action="store_true", help="Machine-readable JSON output"
+    )
+
     # ---------------------------------------------------------------- backup
     p_backup = sub.add_parser("backup", help="Archive and back up HOME data to NAS")
     p_backup.add_argument("--dry-run", action="store_true", help="Print plan; write nothing")
@@ -213,6 +231,10 @@ def _run_home_required(cmd: str, args: argparse.Namespace) -> int:
         from deep_daily.commands.doctor_cmd import cmd_doctor
 
         return cmd_doctor(args, home)
+    if cmd == "kb":
+        from deep_daily.commands.kb_cmd import cmd_kb
+
+        return cmd_kb(args, home)
     if cmd == "backup":
         from deep_daily.commands.backup_cmd import cmd_backup
 

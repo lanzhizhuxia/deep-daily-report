@@ -1,0 +1,11 @@
+{
+  "id": "tw_2049029095842005458",
+  "event_time": "2026-04-28T15:33:00+08:00",
+  "fetched_at": "2026-04-28T08:00:00Z",
+  "tweet_url": "https://x.com/test/status/2049029095842005458",
+  "content": "hello world",
+  "content_zh": "你好世界",
+  "reference_content": "quoted reply",
+  "handle": "tester",
+  "relevance": "4"
+}
