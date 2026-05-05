@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import asyncio
 import sqlite3
 import sys
 from pathlib import Path
@@ -14,6 +15,7 @@ def cmd_kb(args: argparse.Namespace, home: HomeConfig) -> int:
     from deep_daily.config import init_runtime
     from deep_daily.kb.cli import format_query_json, format_query_table, format_stats, format_stats_json
     from deep_daily.kb.ingest import collect_stats, ingest
+    from deep_daily.kb.mcp import install_claude_desktop, run_stdio_server
     from deep_daily.kb.query import search_text
     from deep_daily.kb.state import KBLockHeldError
 
@@ -67,6 +69,21 @@ def cmd_kb(args: argparse.Namespace, home: HomeConfig) -> int:
             print(format_query_json(results))
         else:
             print(format_query_table(results))
+        return 0
+
+    if args.kb_cmd == "mcp":
+        if getattr(args, "install_claude_desktop", False):
+            config_path, existed, replaced = install_claude_desktop(home)
+            if replaced:
+                print("Warning: replaced existing deep-daily-kb Claude Desktop entry.", file=sys.stderr)
+            state = "existing" if existed else "new"
+            print(f"Installed. Restart Claude Desktop to activate. ({state} config: {config_path})")
+            return 0
+        try:
+            asyncio.run(run_stdio_server(db_path=db_path))
+        except sqlite3.Error as err:
+            print(f"kb mcp failed: {err}", file=sys.stderr)
+            return 1
         return 0
 
     raise AssertionError(f"Unhandled kb subcommand: {args.kb_cmd!r}")

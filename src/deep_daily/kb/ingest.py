@@ -20,6 +20,7 @@ from .normalize import (
     normalize_tweet_curated,
 )
 from .refs import upsert_raw_ref
+from .query import collect_stats
 from .schema import bootstrap_db, rebuild_db
 from .state import (
     KBIngestLock,
@@ -147,68 +148,6 @@ def ingest(
             conn.commit()
             conn.close()
             raise
-
-
-def collect_stats(db_path: Path) -> dict[str, object]:
-    if not db_path.exists():
-        return {
-            "items_total": 0,
-            "per_source": {},
-            "date_range": {"earliest": None, "latest": None},
-            "last_ingest": None,
-            "db_size_bytes": 0,
-            "provenance_stats": {
-                "tweets_curated_only": 0,
-                "tweets_bulk_only": 0,
-                "tweets_merged": 0,
-            },
-        }
-    conn = sqlite3.connect(db_path)
-    items_total = int(conn.execute("SELECT COUNT(*) FROM items").fetchone()[0])
-    per_source = {
-        str(row[0]): int(row[1])
-        for row in conn.execute("SELECT source, COUNT(*) FROM items GROUP BY source ORDER BY source")
-    }
-    date_row = conn.execute("SELECT MIN(event_ts), MAX(event_ts) FROM items").fetchone()
-    provenance_row = conn.execute(
-        "SELECT "
-        "SUM(CASE WHEN source='tweet' AND has_curated=1 AND has_bulk=0 THEN 1 ELSE 0 END), "
-        "SUM(CASE WHEN source='tweet' AND has_bulk=1 AND has_curated=0 THEN 1 ELSE 0 END), "
-        "SUM(CASE WHEN source='tweet' AND has_curated=1 AND has_bulk=1 THEN 1 ELSE 0 END) "
-        "FROM items"
-    ).fetchone()
-    last_run_row = conn.execute(
-        "SELECT run_id, started_ts, finished_ts, files_scanned, files_skipped, files_ok, files_failed, rows_inserted, rows_updated, rows_refs_added, ok "
-        "FROM ingest_runs ORDER BY run_id DESC LIMIT 1"
-    ).fetchone()
-    last_ingest = None
-    if last_run_row is not None:
-        last_ingest = {
-            "run_id": int(last_run_row[0]),
-            "started_ts": last_run_row[1],
-            "ts": last_run_row[2],
-            "files_scanned": int(last_run_row[3]),
-            "files_skipped": int(last_run_row[4]),
-            "files_ok": int(last_run_row[5]),
-            "files_failed": int(last_run_row[6]),
-            "rows_inserted": int(last_run_row[7]),
-            "rows_updated": int(last_run_row[8]),
-            "rows_refs_added": int(last_run_row[9]),
-            "ok": bool(last_run_row[10]) if last_run_row[10] is not None else None,
-        }
-    conn.close()
-    return {
-        "items_total": items_total,
-        "per_source": per_source,
-        "date_range": {"earliest": date_row[0], "latest": date_row[1]},
-        "last_ingest": last_ingest,
-        "db_size_bytes": db_path.stat().st_size,
-        "provenance_stats": {
-            "tweets_curated_only": int(provenance_row[0] or 0),
-            "tweets_bulk_only": int(provenance_row[1] or 0),
-            "tweets_merged": int(provenance_row[2] or 0),
-        },
-    }
 
 
 def _ingest_source(

@@ -141,6 +141,12 @@ def build_parser() -> argparse.ArgumentParser:
     p_kb_query.add_argument("--author", type=str, default=None, help="Case-insensitive author substring")
     p_kb_query.add_argument("--limit", type=int, default=20, help="Max rows (clamped to 1..100)")
     p_kb_query.add_argument("--json", action="store_true", help="Machine-readable JSON output")
+    p_kb_mcp = kb_sub.add_parser("mcp", help="Run KB MCP stdio server or install Claude Desktop config")
+    p_kb_mcp.add_argument(
+        "--install-claude-desktop",
+        action="store_true",
+        help="Install/merge Claude Desktop MCP server config and exit",
+    )
 
     # ---------------------------------------------------------------- backup
     p_backup = sub.add_parser("backup", help="Archive and back up HOME data to NAS")
