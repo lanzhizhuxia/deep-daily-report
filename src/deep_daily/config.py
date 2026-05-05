@@ -167,6 +167,7 @@ class AppConfig:
     articles_dir: Path
     tweets_dir: Path
     tweets_nas_dir: Path
+    hackernews_dir: Path
     dailies_dir: Path
     pipeline_dir: Path
     dailies_dryrun_dir: Path
@@ -206,6 +207,7 @@ def build_app_config(*, data_root: Path, configs_dir: Path) -> AppConfig:
         articles_dir=root / "articles",
         tweets_dir=root / "tweets",
         tweets_nas_dir=root / "tweets-nas",
+        hackernews_dir=root / "hackernews",
         dailies_dir=root / "dailies",
         pipeline_dir=root / "dailies" / ".pipeline",
         dailies_dryrun_dir=root / "dailies-dryrun",
@@ -244,7 +246,7 @@ def seed_runtime_files_if_missing(app: AppConfig) -> None:
 def _ensure_data_dirs(home: "HomeConfig") -> None:
     """Create all required data/ subdirs per PLAN v2.1 §3.3. Idempotent."""
     data = home.data_dir
-    for sub in ("articles", "tweets", "tweets-nas", "news-6551", ".session-memory"):
+    for sub in ("articles", "tweets", "tweets-nas", "news-6551", "hackernews", ".session-memory"):
         (data / sub).mkdir(parents=True, exist_ok=True)
     for parent in ("dailies", "dailies-dryrun"):
         (data / parent).mkdir(parents=True, exist_ok=True)
@@ -297,6 +299,7 @@ _LEGACY_CONST_MAP: dict[str, Callable[[RuntimeConfig], Any]] = {
     "ARTICLES_DIR": lambda r: r.app.articles_dir,
     "TWEETS_DIR": lambda r: r.app.tweets_dir,
     "TWEETS_NAS_DIR": lambda r: r.app.tweets_nas_dir,
+    "HACKERNEWS_DIR": lambda r: r.app.hackernews_dir,
     "DAILIES_DIR": lambda r: r.app.dailies_dir,
     "PIPELINE_DIR": lambda r: r.app.pipeline_dir,
     "PROFILE_PATH": lambda r: r.app.profile_path,

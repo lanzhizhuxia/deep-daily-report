@@ -303,7 +303,6 @@ def _detect_new_signals(
 
 def _llm_boundary_check(material: Dict[str, Any], matched_event: Dict[str, Any]) -> str:
     """LLM review for gray-zone similarity (0.4-0.7). Returns 'new' or 'ongoing'."""
-    model = config.get_effective_models().filter
     mat_title = material.get("title", "")
     mat_snippet = (material.get("content_zh") or "")[:200]
     event_title = matched_event.get("title_fingerprint", "")
@@ -323,6 +322,7 @@ def _llm_boundary_check(material: Dict[str, Any], matched_event: Dict[str, Any])
 只回答一个词：same（同一事件的后续）或 different（不同事件）"""
 
     try:
+        model = config.get_effective_models().filter
         raw = _call_llm(
             [{"role": "user", "content": prompt}],
             model=model,
@@ -332,6 +332,19 @@ def _llm_boundary_check(material: Dict[str, Any], matched_event: Dict[str, Any])
         answer = raw.strip().lower()
         if "same" in answer:
             return "ongoing"
+        return "new"
+    except RuntimeError as err:
+        if "EffectiveModels has not been resolved" in str(err):
+            print(
+                "  Cross-day dedup: EffectiveModels unresolved, "
+                "skipping gray-zone LLM review and defaulting to new",
+                file=sys.stderr,
+            )
+            return "new"
+        print(
+            f"  Cross-day dedup: LLM boundary check failed ({err}), defaulting to new",
+            file=sys.stderr,
+        )
         return "new"
     except Exception as err:
         print(
@@ -484,6 +497,7 @@ def _update_reported_events(
 # ---------------------------------------------------------------------------
 
 _news_6551: Any = None
+_hackernews: Any = None
 _llm_backend: LLMBackend | None = None
 _publisher: Publisher | None = None
 
@@ -1075,16 +1089,41 @@ def step1_collect_materials(date_str: str) -> Dict[str, Any]:
                 file=sys.stderr,
             )
 
+    hackernews_count = 0
+    global _hackernews
+    if _hackernews is None:
+        try:
+            _hackernews = _importlib.import_module("deep_daily.collectors.hackernews")
+        except ImportError as _hie:
+            print(f"  [hackernews] Import failed ({_hie}), skipping", file=sys.stderr)
+            _hackernews = False
+    if _hackernews and _hackernews is not False:
+        try:
+            hn_result = _hackernews.collect_hackernews(
+                date_str,
+                hackernews_dir=config.HACKERNEWS_DIR,
+                verbose=True,
+            )
+            hackernews_count = hn_result["count"]
+            materials.extend(hn_result["materials"])
+        except Exception as _hne:
+            print(
+                f"  [hackernews] collect_hackernews failed ({_hne}), skipping",
+                file=sys.stderr,
+            )
+
     stats = {
         "date": date_str,
         "article_count": article_count,
         "tweet_count": tweet_count,
         "news_6551_count": news_6551_count,
+        "hackernews_count": hackernews_count,
         "total": len(materials),
     }
     print(
         f"  Step 1: collected {article_count} articles + {tweet_count} tweets"
-        f" + {nas_tweet_count} NAS tweets + {news_6551_count} 6551 news = {len(materials)} materials"
+        f" + {nas_tweet_count} NAS tweets + {news_6551_count} 6551 news"
+        f" + {hackernews_count} HN stories = {len(materials)} materials"
     )
     return {"materials": materials, "stats": stats}
 
