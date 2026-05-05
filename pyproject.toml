@@ -22,3 +22,13 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-ra --strict-markers --strict-config"
+markers = [
+    "hard_gate_1: bootstrap correctness (import safety + double init)",
+    "hard_gate_2: path and cache discipline (identity grep + dry-run isolation)",
+    "hard_gate_3: end-to-end smoke",
+]

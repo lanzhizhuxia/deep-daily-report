@@ -1,17 +1,36 @@
+"""Runtime configuration module.
+
+Per PLAN v2.1 §5.2 (strict singleton contract), §11.3 (init_runtime responsibilities),
+§11.4 (prohibited patterns).
+
+Key invariants (HARD GATE 1 enforces):
+  - NO I/O at module import time. build_app_config() is pure.
+  - One init_runtime(home) call per process. Same-HOME re-call is a no-op;
+    different-HOME raises RuntimeAlreadyInitializedError.
+  - Legacy `config.ARTICLES_DIR`-style attribute reads are served via PEP 562
+    __getattr__, which raises RuntimeError if accessed before init_runtime().
+
+Legacy constants (DATA_DIR, ARTICLES_DIR, ...) are a Phase 1 compatibility shim
+for ~30 call sites in pipeline.py. They will be migrated to explicit
+get_runtime().app.<field> access in Phase 2. DO NOT extend _LEGACY_CONST_MAP
+with new attributes — add new fields to AppConfig and use get_runtime() directly.
+"""
+
 from __future__ import annotations
 
-import os
 import json
+import os
 import re
 import sys
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any, Callable
 
 import yaml
 
-from deep_daily.runtime import seed_if_missing
+if TYPE_CHECKING:
+    from deep_daily.home import HomeConfig
 
 
 CLEANUP_MAX_AGE_DAYS = 14
@@ -25,9 +44,7 @@ ONGOING_CAP_PER_TOPIC = 1
 TITLE_SIM_MATCH_THRESHOLD = 0.7
 TITLE_SIM_GRAY_LOW = 0.4
 
-DEFAULT_READER_SNIPPET = (
-    "读者是加密货币行业从业者，关注行业整体动态和技术发展。"
-)
+DEFAULT_READER_SNIPPET = "读者是加密货币行业从业者，关注行业整体动态和技术发展。"
 
 DEFAULT_ACTIVE_SYSTEMS = (
     "RSS pipeline, browser-use automation, LLM daily digest, "
@@ -67,22 +84,24 @@ class AppConfig:
     news_sources_yaml_path: Path
 
 
-def _default_data_root() -> Path:
-    return Path.home() / ".david" / "data" / "rss"
+@dataclass
+class RuntimeConfig:
+    home: "HomeConfig"
+    app: AppConfig
 
 
-def _default_configs_dir() -> Path:
-    return Path(__file__).resolve().parents[2] / "configs"
+class RuntimeAlreadyInitializedError(RuntimeError):
+    """Raised when init_runtime() is called a second time with a different HOME."""
 
 
-def build_app_config(
-    *,
-    data_root: Path | None = None,
-    configs_dir: Path | None = None,
-) -> AppConfig:
-    root = Path(data_root) if data_root is not None else _default_data_root()
-    cfg_dir = Path(configs_dir) if configs_dir is not None else _default_configs_dir()
-    cfg = AppConfig(
+_runtime: RuntimeConfig | None = None
+
+
+def build_app_config(*, data_root: Path, configs_dir: Path) -> AppConfig:
+    """Pure factory — construct AppConfig from two root paths. No I/O."""
+    root = Path(data_root)
+    cfg_dir = Path(configs_dir)
+    return AppConfig(
         data_root=root,
         configs_dir=cfg_dir,
         articles_dir=root / "articles",
@@ -101,65 +120,105 @@ def build_app_config(
         readers_yaml_path=cfg_dir / "readers.yaml",
         news_sources_yaml_path=cfg_dir / "news-sources.yaml",
     )
-    seed_if_missing(cfg.kols_seed_path, cfg.kols_path)
-    return cfg
 
 
-_app_config = build_app_config()
+def seed_runtime_files_if_missing(app: AppConfig) -> None:
+    """Idempotent, atomic seeding of runtime files that must exist before the
+    pipeline runs. Currently: twitter-kols.json from twitter-kols.json.seed.
 
-DATA_DIR = _app_config.data_root
-ARTICLES_DIR = _app_config.articles_dir
-TWEETS_DIR = _app_config.tweets_dir
-TWEETS_NAS_DIR = _app_config.tweets_nas_dir
-DAILIES_DIR = _app_config.dailies_dir
-PIPELINE_DIR = _app_config.pipeline_dir
-PROFILE_PATH = _app_config.profile_path
-ACTIVE_SYSTEMS_PATH = _app_config.active_systems_path
-TOPICS_YAML_PATH = _app_config.topics_yaml_path
-DYNAMIC_TOPICS_PATH = _app_config.dynamic_topics_path
-DYNAMIC_KOLS_PATH = _app_config.dynamic_kols_path
-KOLS_PATH = _app_config.kols_path
-_KOLS_SEED_PATH = _app_config.kols_seed_path
-REPORTED_EVENTS_PATH = _app_config.reported_events_path
-READERS_YAML_PATH = _app_config.readers_yaml_path
-NEWS_SOURCES_YAML_PATH = _app_config.news_sources_yaml_path
+    Called from init_runtime(), not from build_app_config(). Safe to call many
+    times — only writes when target is missing. Atomic via tmp + os.replace.
+    """
+    if app.kols_path.exists():
+        return
+    seed = app.kols_seed_path
+    if not seed.exists():
+        return
+    app.kols_path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = app.kols_path.with_suffix(app.kols_path.suffix + ".tmp")
+    tmp.write_bytes(seed.read_bytes())
+    os.replace(tmp, app.kols_path)
 
 
-def configure_paths(
-    *,
-    data_root: Path | None = None,
-    configs_dir: Path | None = None,
-) -> None:
-    global _app_config
-    global DATA_DIR, ARTICLES_DIR, TWEETS_DIR, TWEETS_NAS_DIR, DAILIES_DIR, PIPELINE_DIR
-    global PROFILE_PATH, ACTIVE_SYSTEMS_PATH, TOPICS_YAML_PATH, DYNAMIC_TOPICS_PATH
-    global DYNAMIC_KOLS_PATH, KOLS_PATH, _KOLS_SEED_PATH, REPORTED_EVENTS_PATH
-    global READERS_YAML_PATH, NEWS_SOURCES_YAML_PATH
-    _app_config = build_app_config(data_root=data_root, configs_dir=configs_dir)
-    DATA_DIR = _app_config.data_root
-    ARTICLES_DIR = _app_config.articles_dir
-    TWEETS_DIR = _app_config.tweets_dir
-    TWEETS_NAS_DIR = _app_config.tweets_nas_dir
-    DAILIES_DIR = _app_config.dailies_dir
-    PIPELINE_DIR = _app_config.pipeline_dir
-    PROFILE_PATH = _app_config.profile_path
-    ACTIVE_SYSTEMS_PATH = _app_config.active_systems_path
-    TOPICS_YAML_PATH = _app_config.topics_yaml_path
-    DYNAMIC_TOPICS_PATH = _app_config.dynamic_topics_path
-    DYNAMIC_KOLS_PATH = _app_config.dynamic_kols_path
-    KOLS_PATH = _app_config.kols_path
-    _KOLS_SEED_PATH = _app_config.kols_seed_path
-    REPORTED_EVENTS_PATH = _app_config.reported_events_path
-    READERS_YAML_PATH = _app_config.readers_yaml_path
-    NEWS_SOURCES_YAML_PATH = _app_config.news_sources_yaml_path
+def _ensure_data_dirs(home: "HomeConfig") -> None:
+    """Create all required data/ subdirs per PLAN v2.1 §3.3. Idempotent."""
+    data = home.data_dir
+    for sub in ("articles", "tweets", "tweets-nas", "news-6551", ".session-memory"):
+        (data / sub).mkdir(parents=True, exist_ok=True)
+    for parent in ("dailies", "dailies-dryrun"):
+        (data / parent).mkdir(parents=True, exist_ok=True)
+        (data / parent / ".pipeline").mkdir(parents=True, exist_ok=True)
+
+
+def init_runtime(home: "HomeConfig") -> None:
+    """Bind the process-wide runtime configuration to `home`. See PLAN v2.1 §5.2.
+
+    First call sets _runtime. Second call with same (normalized) HOME is a no-op.
+    Second call with a different HOME raises RuntimeAlreadyInitializedError.
+    """
+    global _runtime
+    normalized = home.path.resolve()
+
+    if _runtime is not None:
+        existing = _runtime.home.path.resolve()
+        if existing == normalized:
+            return
+        raise RuntimeAlreadyInitializedError(
+            f"init_runtime called twice with different HOMEs: "
+            f"existing={existing}, new={normalized}. "
+            f"One process = one HOME (PLAN v2.1 §5.2)."
+        )
+
+    _ensure_data_dirs(home)
+    app = build_app_config(data_root=home.data_dir, configs_dir=home.configs_dir)
+    seed_runtime_files_if_missing(app)
+    _runtime = RuntimeConfig(home=home, app=app)
+
+
+def get_runtime() -> RuntimeConfig:
+    if _runtime is None:
+        raise RuntimeError(
+            "init_runtime() has not been called. This is a bootstrap/import "
+            "ordering bug: the CLI entry point must call init_runtime(home) "
+            "before any pipeline code runs. See PLAN v2.1 §5.1 / §11.1."
+        )
+    return _runtime
 
 
 def get_app_config() -> AppConfig:
-    return _app_config
+    """Return the active AppConfig. Phase 1 compatibility accessor — prefer
+    get_runtime().app in new code."""
+    return get_runtime().app
+
+
+_LEGACY_CONST_MAP: dict[str, Callable[[RuntimeConfig], Any]] = {
+    "DATA_DIR": lambda r: r.app.data_root,
+    "ARTICLES_DIR": lambda r: r.app.articles_dir,
+    "TWEETS_DIR": lambda r: r.app.tweets_dir,
+    "TWEETS_NAS_DIR": lambda r: r.app.tweets_nas_dir,
+    "DAILIES_DIR": lambda r: r.app.dailies_dir,
+    "PIPELINE_DIR": lambda r: r.app.pipeline_dir,
+    "PROFILE_PATH": lambda r: r.app.profile_path,
+    "ACTIVE_SYSTEMS_PATH": lambda r: r.app.active_systems_path,
+    "TOPICS_YAML_PATH": lambda r: r.app.topics_yaml_path,
+    "DYNAMIC_TOPICS_PATH": lambda r: r.app.dynamic_topics_path,
+    "DYNAMIC_KOLS_PATH": lambda r: r.app.dynamic_kols_path,
+    "KOLS_PATH": lambda r: r.app.kols_path,
+    "REPORTED_EVENTS_PATH": lambda r: r.app.reported_events_path,
+    "READERS_YAML_PATH": lambda r: r.app.readers_yaml_path,
+    "NEWS_SOURCES_YAML_PATH": lambda r: r.app.news_sources_yaml_path,
+}
+
+
+def __getattr__(name: str) -> Any:
+    """PEP 562 lazy accessor for legacy path constants. See module docstring."""
+    if name in _LEGACY_CONST_MAP:
+        return _LEGACY_CONST_MAP[name](get_runtime())
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
 def _load_reader_profile(profile_path: Path | None = None) -> str:
-    path = profile_path or get_app_config().profile_path
+    path = profile_path or get_runtime().app.profile_path
     if not path.exists():
         return DEFAULT_READER_SNIPPET
     try:
@@ -193,7 +252,7 @@ def _load_reader_profile(profile_path: Path | None = None) -> str:
 
 
 def _load_active_systems(systems_path: Path | None = None) -> str:
-    path = systems_path or get_app_config().active_systems_path
+    path = systems_path or get_runtime().app.active_systems_path
     if not path.exists():
         return DEFAULT_ACTIVE_SYSTEMS
     try:
@@ -216,9 +275,9 @@ def _load_topic_config(
     dynamic_path: Path | None = None,
 ) -> dict[str, Any]:
     config: dict[str, Any] = {"pinned": [], "dynamic": [], "dynamic_max": 4}
-    app_cfg = get_app_config()
+    app = get_runtime().app
 
-    p_path = pinned_path or app_cfg.topics_yaml_path
+    p_path = pinned_path or app.topics_yaml_path
     if p_path.exists():
         try:
             raw = yaml.safe_load(p_path.read_text(encoding="utf-8"))
@@ -238,7 +297,7 @@ def _load_topic_config(
         except Exception as e:
             print(f"  WARNING: Failed to load topics.yaml: {e}", file=sys.stderr)
 
-    d_path = dynamic_path or app_cfg.dynamic_topics_path
+    d_path = dynamic_path or app.dynamic_topics_path
     if d_path.exists():
         try:
             with open(d_path, encoding="utf-8") as f:
@@ -254,103 +313,39 @@ def _load_topic_config(
                     )
             config["dynamic"] = config["dynamic"][: config["dynamic_max"]]
         except Exception as e:
-            print(f"  WARNING: Failed to load dynamic-topics.json: {e}", file=sys.stderr)
+            print(
+                f"  WARNING: Failed to load dynamic-topics.json: {e}", file=sys.stderr
+            )
 
     return config
 
 
-_READER_ID_RE = re.compile(r"^[a-z0-9-]+$")
+def build_default_reader_from_home() -> ReaderConfig:
+    """Construct the single ReaderConfig for this HOME.
 
+    Post multi-reader removal (PLAN v2.1 §2.1): one HOME = one reader. Reader
+    identity comes from config.yaml (reader.name, reader.notify.*), not from a
+    hardcoded id or a readers.yaml file. Paths come from the active runtime.
+    """
+    runtime = get_runtime()
+    raw = runtime.home.raw_config.get("reader", {}) or {}
+    notify = raw.get("notify", {}) or {}
 
-def _load_readers_config(path: Path) -> list[ReaderConfig]:
-    raw = yaml.safe_load(path.read_text(encoding="utf-8"))
-    if not isinstance(raw, dict) or "readers" not in raw:
-        raise ValueError(f"readers.yaml must contain a 'readers' key: {path}")
+    reader_id = str(raw.get("name") or runtime.home.path.name)
+    topic_id = notify.get("topic_id") or f"{reader_id}.daily-report"
+    dedupe_prefix = notify.get("dedupe_prefix") or f"daily_report_{reader_id}"
+    event_id = notify.get("event_id") or "daily_report_ready"
 
-    defaults = raw.get("defaults", {})
-    app_cfg = get_app_config()
-    data_root = Path(os.path.expanduser(defaults.get("data_root", str(app_cfg.data_root))))
-    readers: list[ReaderConfig] = []
-    seen_ids: set[str] = set()
-
-    for entry in raw["readers"]:
-        if not isinstance(entry, dict):
-            continue
-        if not entry.get("enabled", True):
-            continue
-
-        rid = entry.get("reader_id", "")
-        if not rid:
-            raise ValueError("reader entry missing reader_id")
-        if not _READER_ID_RE.match(rid):
-            raise ValueError(f"reader_id '{rid}' must match [a-z0-9-]")
-        if rid in seen_ids:
-            raise ValueError(f"duplicate reader_id '{rid}'")
-        seen_ids.add(rid)
-
-        def _resolve(key: str, fallback: str | None = None) -> str:
-            val = entry.get(key) or defaults.get(key) or fallback or ""
-            return os.path.expanduser(val)
-
-        profile_path_str = _resolve("profile", str(app_cfg.profile_path))
-        profile_snippet = _load_reader_profile(Path(profile_path_str))
-
-        pinned_path = Path(_resolve("topics_pinned", str(app_cfg.topics_yaml_path)))
-        dynamic_path = Path(_resolve("topic_dynamic", str(app_cfg.dynamic_topics_path)))
-        topic_config = _load_topic_config(pinned_path, dynamic_path)
-
-        systems_path_str = _resolve("active_systems", str(app_cfg.active_systems_path))
-        active_systems = _load_active_systems(Path(systems_path_str))
-
-        if entry.get("output_dir"):
-            out_dir = Path(os.path.expanduser(entry["output_dir"]))
-        elif rid == "david":
-            out_dir = app_cfg.dailies_dir
-        else:
-            out_dir = data_root / "readers" / rid / "dailies"
-
-        if entry.get("cache_dir"):
-            cache_dir = Path(os.path.expanduser(entry["cache_dir"]))
-        else:
-            cache_dir = out_dir / ".pipeline"
-
-        notify_defaults = defaults.get("notify", {})
-        notify_entry = entry.get("notify", {})
-        notify = {**notify_defaults, **notify_entry}
-        if not notify.get("topic_id"):
-            raise ValueError(f"reader '{rid}': notify.topic_id is required")
-        if not notify.get("dedupe_prefix"):
-            notify["dedupe_prefix"] = f"rss_daily_report_{rid}"
-
-        readers.append(
-            ReaderConfig(
-                reader_id=rid,
-                profile_snippet=profile_snippet,
-                topic_config=topic_config,
-                output_dir=out_dir,
-                cache_dir=cache_dir,
-                notification=notify,
-                active_systems=active_systems,
-            )
-        )
-
-    if not readers:
-        raise ValueError(f"No enabled readers found in {path}")
-    return readers
-
-
-def _build_default_reader() -> ReaderConfig:
-    app_cfg = get_app_config()
     return ReaderConfig(
-        reader_id="david",
+        reader_id=reader_id,
         profile_snippet=_load_reader_profile(),
         topic_config=_load_topic_config(),
-        output_dir=app_cfg.dailies_dir,
-        cache_dir=app_cfg.pipeline_dir,
+        output_dir=runtime.app.dailies_dir,
+        cache_dir=runtime.app.pipeline_dir,
         notification={
-            "topic_id": "work.rss.daily-report",
-            "event_id": "rss_daily_report_ready",
-            "dedupe_prefix": "rss_daily_report",
+            "topic_id": topic_id,
+            "event_id": event_id,
+            "dedupe_prefix": dedupe_prefix,
         },
         active_systems=_load_active_systems(),
     )

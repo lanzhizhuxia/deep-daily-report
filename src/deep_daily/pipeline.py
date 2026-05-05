@@ -25,12 +25,9 @@ from deep_daily.collectors.twitter import collect_tweets
 from deep_daily.collectors.twitter_nas import collect_nas_tweets
 from deep_daily.config import (
     ReaderConfig,
-    _build_default_reader,
     _load_active_systems,
     _load_reader_profile,
-    _load_readers_config,
     _load_topic_config,
-    configure_paths,
 )
 from deep_daily.dedup import normalize_title, normalize_url, title_similarity
 from deep_daily.protocols import LLMBackend, Publisher
@@ -363,12 +360,8 @@ def configure(
     *,
     llm: LLMBackend | None = None,
     publisher: Publisher | None = None,
-    data_root: Path | None = None,
-    configs_dir: Path | None = None,
 ) -> None:
     global _llm_backend, _publisher
-    if data_root is not None or configs_dir is not None:
-        configure_paths(data_root=data_root, configs_dir=configs_dir)
     if llm is not None:
         _llm_backend = llm
     if publisher is not None:
@@ -2144,19 +2137,8 @@ def cmd_generate(args: argparse.Namespace) -> None:
 
     write_model = args.model or os.environ.get('DAILY_WRITE_MODEL', 'google/gemini-3-pro-preview')
 
-    # --- Build reader list ---
-    readers_path = getattr(args, 'readers', None)
-    reader_id_filter = getattr(args, 'reader_id', None)
-
-    if readers_path:
-        readers = _load_readers_config(Path(readers_path))
-        if reader_id_filter:
-            readers = [r for r in readers if r.reader_id == reader_id_filter]
-            if not readers:
-                print(f"No reader with id '{reader_id_filter}' found in {readers_path}", file=sys.stderr)
-                sys.exit(1)
-    else:
-        readers = [_build_default_reader()]
+    # --- Build reader list (v0.3.0: one HOME = one reader) ---
+    readers = [config.build_default_reader_from_home()]
 
     # --- Pre-flight: skip if all outputs exist (single reader, no force/resume) ---
     if len(readers) == 1 and not args.force and not args.resume:
