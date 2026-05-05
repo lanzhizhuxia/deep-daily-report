@@ -170,6 +170,106 @@ def test_run_doctor_flags_bad_llm_backend_as_error(tmp_home: Path) -> None:
 
 
 @pytest.mark.hard_gate_3
+def test_run_doctor_reports_backup_warn_when_no_last_json(tmp_home: Path) -> None:
+    home = _write_home_with_full_config(tmp_home)
+
+    def env(name: str) -> str | None:
+        return {"LLM_API_BASE": "x", "LLM_API_KEY": "x"}.get(name)
+
+    results = run_doctor(home, deep=False, getenv=env)
+    by_name = {r.name: r for r in results}
+    assert "backup.last" in by_name
+    assert by_name["backup.last"].severity == SEVERITY_WARN
+    assert "no backup has run" in by_name["backup.last"].message
+
+
+@pytest.mark.hard_gate_3
+def test_run_doctor_reports_backup_ok_when_last_json_fresh(tmp_home: Path) -> None:
+    from datetime import datetime, timedelta, timezone
+
+    home = _write_home_with_full_config(tmp_home)
+    backup_dir = tmp_home / "state" / "backup"
+    backup_dir.mkdir(parents=True)
+    fresh_ts = (datetime.now(timezone.utc) - timedelta(hours=2)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    (backup_dir / "last.json").write_text(
+        json.dumps(
+            {
+                "ts": fresh_ts,
+                "archive": "fake.tar.gz",
+                "size_bytes": 1_048_576,
+                "ok": True,
+                "duration_s": 3,
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    def env(name: str) -> str | None:
+        return {"LLM_API_BASE": "x", "LLM_API_KEY": "x"}.get(name)
+
+    results = run_doctor(home, deep=False, getenv=env)
+    by_name = {r.name: r for r in results}
+    assert by_name["backup.last"].severity == SEVERITY_OK
+    assert "last success" in by_name["backup.last"].message
+
+
+@pytest.mark.hard_gate_3
+def test_run_doctor_reports_backup_error_when_stale(tmp_home: Path) -> None:
+    from datetime import datetime, timedelta, timezone
+
+    home = _write_home_with_full_config(tmp_home)
+    backup_dir = tmp_home / "state" / "backup"
+    backup_dir.mkdir(parents=True)
+    stale_ts = (datetime.now(timezone.utc) - timedelta(hours=48)).strftime(
+        "%Y-%m-%dT%H:%M:%SZ"
+    )
+    (backup_dir / "last.json").write_text(
+        json.dumps({"ts": stale_ts, "archive": "old.tar.gz", "ok": True, "size_bytes": 1}),
+        encoding="utf-8",
+    )
+
+    def env(name: str) -> str | None:
+        return {"LLM_API_BASE": "x", "LLM_API_KEY": "x"}.get(name)
+
+    results = run_doctor(home, deep=False, getenv=env)
+    errors = [r for r in results if r.severity == SEVERITY_ERROR]
+    names = {r.name for r in errors}
+    assert "backup.last" in names
+
+
+@pytest.mark.hard_gate_3
+def test_run_doctor_reports_backup_error_when_ok_false(tmp_home: Path) -> None:
+    home = _write_home_with_full_config(tmp_home)
+    backup_dir = tmp_home / "state" / "backup"
+    backup_dir.mkdir(parents=True)
+    (backup_dir / "last.json").write_text(
+        json.dumps({"ts": "2026-01-01T00:00:00Z", "ok": False, "error": "nas down"}),
+        encoding="utf-8",
+    )
+
+    def env(name: str) -> str | None:
+        return {"LLM_API_BASE": "x", "LLM_API_KEY": "x"}.get(name)
+
+    results = run_doctor(home, deep=False, getenv=env)
+    errors = {r.name for r in results if r.severity == SEVERITY_ERROR}
+    assert "backup.last" in errors
+
+
+@pytest.mark.hard_gate_3
+def test_run_doctor_reports_kb_warn_when_db_missing(tmp_home: Path) -> None:
+    home = _write_home_with_full_config(tmp_home)
+
+    def env(name: str) -> str | None:
+        return {"LLM_API_BASE": "x", "LLM_API_KEY": "x"}.get(name)
+
+    results = run_doctor(home, deep=False, getenv=env)
+    by_name = {r.name: r for r in results}
+    assert "kb.db" in by_name
+    assert by_name["kb.db"].severity == SEVERITY_WARN
+    assert "kb.db not present" in by_name["kb.db"].message
+
+
+@pytest.mark.hard_gate_3
 def test_cmd_doctor_returns_zero_on_clean_home(
     tmp_home: Path, monkeypatch, capsys
 ) -> None:

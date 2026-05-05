@@ -35,8 +35,9 @@ import os
 import sys
 import time
 from dataclasses import asdict, dataclass
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, cast
 
 from deep_daily.home import CONFIG_FILENAME, HomeConfig, SENTINEL_NAME
 
@@ -328,6 +329,177 @@ def _check_data_writable(home: HomeConfig) -> list[CheckResult]:
     return [CheckResult("data.writable", SEVERITY_OK, "writable + subdirs present")]
 
 
+_BACKUP_STALE_HOURS = 26
+
+
+def _check_backup(home: HomeConfig) -> list[CheckResult]:
+    last_path = home.path / "state" / "backup" / "last.json"
+    if not last_path.is_file():
+        return [
+            CheckResult(
+                "backup.last",
+                SEVERITY_WARN,
+                "no backup has run yet",
+                str(last_path),
+            )
+        ]
+    try:
+        payload = json.loads(last_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as err:
+        return [
+            CheckResult(
+                "backup.last",
+                SEVERITY_ERROR,
+                f"last.json unreadable: {err}",
+                str(last_path),
+            )
+        ]
+    ok_flag = payload.get("ok")
+    ts = payload.get("ts") or payload.get("finished_at")
+    if ok_flag is False:
+        return [
+            CheckResult(
+                "backup.last",
+                SEVERITY_ERROR,
+                f"last run failed at {ts}: {payload.get('error', 'no detail')}",
+                str(last_path),
+            )
+        ]
+    if ts is None:
+        return [
+            CheckResult(
+                "backup.last",
+                SEVERITY_WARN,
+                "last.json missing timestamp",
+                str(last_path),
+            )
+        ]
+    try:
+        last_dt = _parse_iso_utc(ts)
+    except ValueError:
+        return [
+            CheckResult(
+                "backup.last",
+                SEVERITY_WARN,
+                f"unparseable timestamp: {ts}",
+                str(last_path),
+            )
+        ]
+    from datetime import datetime, timezone  # noqa: F811 — keep local alias consistent
+
+    age_hours = (datetime.now(timezone.utc) - last_dt).total_seconds() / 3600.0
+    size_mb = (payload.get("size_bytes") or 0) / 1_048_576
+    archive = payload.get("archive") or "(unknown)"
+    detail = f"{archive} {size_mb:.0f}MB age={age_hours:.1f}h"
+    if age_hours > _BACKUP_STALE_HOURS:
+        return [
+            CheckResult(
+                "backup.last",
+                SEVERITY_ERROR,
+                f"last successful backup is {age_hours:.1f}h old (> {_BACKUP_STALE_HOURS}h threshold)",
+                detail,
+            )
+        ]
+    return [CheckResult("backup.last", SEVERITY_OK, f"last success {age_hours:.1f}h ago", detail)]
+
+
+def _parse_iso_utc(ts: str):
+    from datetime import datetime, timezone
+
+    s = ts.replace("Z", "+00:00")
+    dt = datetime.fromisoformat(s)
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt
+
+
+_KB_STALE_HOURS = 26
+
+
+def _check_kb(home: HomeConfig) -> list[CheckResult]:
+    db_path = home.path / "data" / "kb" / "kb.db"
+    if not db_path.is_file():
+        return [
+            CheckResult(
+                "kb.db",
+                SEVERITY_WARN,
+                "kb.db not present (run `kb ingest` to build)",
+                str(db_path),
+            )
+        ]
+    try:
+        from deep_daily.kb.query import collect_stats
+    except ImportError as err:
+        return [CheckResult("kb.db", SEVERITY_ERROR, f"kb module import failed: {err}")]
+    try:
+        stats = collect_stats(db_path)
+    except Exception as err:
+        return [
+            CheckResult(
+                "kb.db",
+                SEVERITY_ERROR,
+                f"stats query failed: {err}",
+                str(db_path),
+            )
+        ]
+    results: list[CheckResult] = []
+    items_total = cast(int, stats.get("items_total") or 0)
+    size_mb = cast(int, stats.get("db_size_bytes") or 0) / 1_048_576
+    per_source = cast(dict[str, int], stats.get("per_source") or {})
+    src_summary = ", ".join(f"{k}={v}" for k, v in sorted(per_source.items()))
+    results.append(
+        CheckResult(
+            "kb.items",
+            SEVERITY_OK,
+            f"{items_total:,} items ({size_mb:.0f}MB)",
+            src_summary,
+        )
+    )
+    last = cast(dict[str, Any], stats.get("last_ingest") or {})
+    last_ts = last.get("ts") or last.get("finished_ts") or last.get("started_ts")
+    last_ok = last.get("ok")
+    if last_ts is None:
+        results.append(CheckResult("kb.ingest", SEVERITY_WARN, "no ingest runs recorded"))
+    else:
+        try:
+            last_dt = _parse_iso_utc(last_ts)
+        except ValueError:
+            results.append(CheckResult("kb.ingest", SEVERITY_WARN, f"unparseable ts: {last_ts}"))
+        else:
+            age_hours = (datetime.now(timezone.utc) - last_dt).total_seconds() / 3600.0
+            files = last.get("files_scanned", 0)
+            skipped = last.get("files_skipped", 0)
+            detail = f"run={last.get('run_id')} scanned={files} skipped={skipped}"
+            if last_ok is False:
+                results.append(
+                    CheckResult("kb.ingest", SEVERITY_ERROR, f"last ingest failed ({age_hours:.1f}h ago)", detail)
+                )
+            elif age_hours > _KB_STALE_HOURS:
+                results.append(
+                    CheckResult(
+                        "kb.ingest",
+                        SEVERITY_ERROR,
+                        f"last ingest is {age_hours:.1f}h old (> {_KB_STALE_HOURS}h threshold)",
+                        detail,
+                    )
+                )
+            else:
+                results.append(
+                    CheckResult("kb.ingest", SEVERITY_OK, f"last success {age_hours:.1f}h ago", detail)
+                )
+    prov = cast(dict[str, Any], stats.get("provenance_stats") or {})
+    merged = prov.get("tweets_merged")
+    if merged is not None:
+        results.append(
+            CheckResult(
+                "kb.provenance",
+                SEVERITY_OK,
+                f"tweets_merged={merged} curated_only={prov.get('tweets_curated_only', 0)} bulk_only={prov.get('tweets_bulk_only', 0)}",
+            )
+        )
+    return results
+
+
 def _check_llm_deep(
     home: HomeConfig, *, getenv: Callable[[str], str | None] = os.environ.get
 ) -> list[CheckResult]:
@@ -405,6 +577,8 @@ def run_doctor(
     results.extend(_check_config_files(home))
     results.extend(_check_env_vars(home, getenv=getenv))
     results.extend(_check_data_writable(home))
+    results.extend(_check_backup(home))
+    results.extend(_check_kb(home))
     if deep:
         results.extend(_check_llm_deep(home, getenv=getenv))
     return results
