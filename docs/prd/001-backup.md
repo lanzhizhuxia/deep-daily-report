@@ -1,15 +1,21 @@
 # PRD 001: NAS Backup Migration
 
-> Status: **DRAFT v2** — Oracle re-reviewed; open questions locked
+> Status: **DRAFT v2.1** — scope expanded from `<HOME>/data/` to full HOME after Phase 1b wet-run findings; Oracle reconsult approved (bg_aeba6353)
 > Author: sam-code session 2026-05-05
-> Reviewed by: Oracle (ses_207ff0be0ffeWE2VDjoq0iO47b → ses_207f5a226ffeXVDlqhMs4XQ3G7)
+> Reviewed by: Oracle (ses_207ff0be0ffeWE2VDjoq0iO47b → ses_207f5a226ffeXVDlqhMs4XQ3G7 → bg_aeba6353)
 > Related: ISSUE-095 (HOME migration); supersedes `<legacy-bot>/scripts/data-backup.sh`
 
 ## TL;DR
 
 Replace the broken `<legacy-bot>/scripts/data-backup.sh` with a first-class `deep_daily backup` subcommand that
-archives `~/.local/deep-daily-daily/data/` to NAS nightly. **This is a reliability bug fix**, not a feature — it ships
-independently of anything else, including PRD 002 (KB).
+archives the full `~/.local/deep-daily-daily/` HOME (config + data, excluding `state/` and `logs/`) to NAS nightly.
+**This is a reliability bug fix**, not a feature — it ships independently of anything else, including PRD 002 (KB).
+
+> **v2.1 scope note**: Phase 1b wet run revealed a restore-gap: the original `<HOME>/data/`-only scope left
+> `config.yaml`, `configs/`, and `.env` outside the archive. Restoring from such an archive required manual
+> HOME re-init. The scope is now the full HOME with an explicit deny-list (`state/**`, `logs/**`, and the
+> pre-existing `data/` sub-excludes re-prefixed). This is a backward-incompatible archive-layout change and
+> was made before cutover precisely so no old-layout archives enter production retention.
 
 ---
 
@@ -21,7 +27,7 @@ independently of anything else, including PRD 002 (KB).
 archives of `~/.local/deep-daily/data/` to NAS
 `<NAS_BASE>/data-runtime/m4/`.
 
-That is the **old HOME**. The **current HOME** is `~/.local/deep-daily-daily/data/` (244 MB, growing ~65 MB/day).
+That is the **old HOME**. The **current HOME** is `~/.local/deep-daily-daily/` (data 259 MB, growing ~65 MB/day).
 Everything important is unbacked.
 
 Evidence on NAS as of 2026-05-05:
@@ -47,7 +53,8 @@ The <legacy-bot> orchestrator is being retired. Its scripts will stop running. B
 
 ### Goals
 
-- **G1** Every byte written to `~/.local/deep-daily-daily/data/` is on NAS within 24 hours.
+- **G1** Every byte written under `~/.local/deep-daily-daily/` (HOME root files, `configs/`, `data/`, `.env`) is on NAS
+  within 24 hours. Operational state (`state/`) and local logs (`logs/`) are deliberately excluded.
 - **G2** Clear failure signal — if the backup breaks, `doctor` flags it within a day.
 - **G3** Zero new operational surface — one launchd plist, one subcommand, one state file.
 - **G4** Independent of the KB work — backup can ship even if KB never does. KB (PRD 002) may proceed in
@@ -90,12 +97,15 @@ deep_daily backup [--dry-run] [--retention N] [--skip-checksum] [--force-unlock]
 **Upload flow** (non-dry-run, ORDERED — this order is part of the contract):
 
 1. **Acquire lock** at `<HOME>/state/backup/backup.lock` (see §4.3 for recovery logic).
-2. **Validate** `<HOME>/data/` exists, non-empty. If empty, exit 1 with "refusing to back up empty dir."
+2. **Validate** `<HOME>` is a real instance — sentinel `.deep-daily-home` and `config.yaml` exist. Empty
+   `data/` is acceptable (a freshly-initialized instance is a valid backup target).
 3. **Clean stale `.part`** on NAS: remove any `<remote_dir>/<INSTANCE_NAME>-*.tar.gz.part` older than 48h
    (best-effort; log failures but do not abort).
 4. **Create local tarball** at `<HOME>/state/backup/<INSTANCE_NAME>-<YYYYMMDD-HHMMSSZ>.tar.gz` (UTC timestamp
-   in filename, fixed 16-char format). Exclusions from config (default:
-   `dailies/.pipeline/**`, `dailies-dryrun/**`, `.session-memory/**`).
+   in filename, fixed 16-char format). Archive is rooted at `<HOME>` (i.e. `tar -C <HOME> .`). Default
+   exclusions cover operational state and data-layer caches:
+   `state/**`, `logs/**`, `data/dailies/.pipeline/**`, `data/dailies-dryrun/**`, `data/.session-memory/**`.
+   If `<HOME>/.env` exists, a warning is logged at backup start (the archive carries secrets).
 5. **Compute local `sha256`** (unless `--skip-checksum`).
 6. `ssh <nas_host> 'mkdir -p <remote_dir>'`.
 7. **Stream** tarball → `<remote_dir>/<name>.tar.gz.part` via `cat | ssh ... > ...`.
