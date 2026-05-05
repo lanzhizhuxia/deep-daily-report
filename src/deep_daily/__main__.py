@@ -40,16 +40,20 @@ def build_parser() -> argparse.ArgumentParser:
     p_init = sub.add_parser("init", help="Initialize a new deep-daily HOME at <path>")
     p_init.add_argument("path", type=str, help="Target directory for the new HOME")
     p_init.add_argument(
-        "--force", action="store_true",
-        help="Overwrite existing files if the target already contains content"
+        "--force",
+        action="store_true",
+        help="Overwrite existing files if the target already contains content",
     )
     p_init.add_argument(
-        "--yes", action="store_true",
-        help="Non-interactive mode: accept defaults without prompting"
+        "--yes",
+        action="store_true",
+        help="Non-interactive mode: accept defaults without prompting",
     )
     p_init.add_argument(
-        "--reader-name", type=str, default=None,
-        help="Reader name for config.yaml (default: derived from target dir name)"
+        "--reader-name",
+        type=str,
+        default=None,
+        help="Reader name for config.yaml (default: derived from target dir name)",
     )
 
     # ------------------------------------------------------------- templates
@@ -61,50 +65,81 @@ def build_parser() -> argparse.ArgumentParser:
 
     # ------------------------------------------------------------------ run
     p_run = sub.add_parser("run", help="Run the daily pipeline")
-    p_run.add_argument("--date", type=str, default=None,
-                       help="Target date YYYY-MM-DD (default: today)")
-    p_run.add_argument("--force", action="store_true",
-                       help="Ignore cache; regenerate from scratch")
-    p_run.add_argument("--resume", action="store_true",
-                       help="Resume from cached pipeline steps")
-    p_run.add_argument("--model", type=str, default=None,
-                       help="Override the Step 3 write model")
-    p_run.add_argument("--dry-run", action="store_true",
-                       help="Do not publish; do not update reported_events; "
-                            "write to dailies-dryrun/ only")
-    p_run.add_argument("--llm-backend", choices=["openai", "multikey", "david"],
-                       default=None,
-                       help="Override config.yaml llm.backend "
-                            "('david' is a deprecated alias for 'multikey')")
-    p_run.add_argument("--publisher", choices=["file", "feishu"], default=None,
-                       help="Override config.yaml publisher.default")
+    p_run.add_argument(
+        "--date", type=str, default=None, help="Target date YYYY-MM-DD (default: today)"
+    )
+    p_run.add_argument(
+        "--force", action="store_true", help="Ignore cache; regenerate from scratch"
+    )
+    p_run.add_argument(
+        "--resume", action="store_true", help="Resume from cached pipeline steps"
+    )
+    p_run.add_argument(
+        "--model", type=str, default=None, help="Override the Step 3 write model"
+    )
+    p_run.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Do not publish; do not update reported_events; "
+        "write to dailies-dryrun/ only",
+    )
+    p_run.add_argument(
+        "--llm-backend",
+        choices=["openai", "multikey", "david"],
+        default=None,
+        help="Override config.yaml llm.backend "
+        "('david' is a deprecated alias for 'multikey')",
+    )
+    p_run.add_argument(
+        "--publisher",
+        choices=["file", "feishu"],
+        default=None,
+        help="Override config.yaml publisher.default",
+    )
 
     # ---------------------------------------------------------------- fetch
     p_fetch = sub.add_parser("fetch", help="Run collectors only (no LLM, no publish)")
-    p_fetch.add_argument("--collectors", type=str, default=None,
-                         help="Comma-separated collector names "
-                              "(reserved — currently respects config.yaml toggles only)")
+    p_fetch.add_argument(
+        "--collectors",
+        type=str,
+        default=None,
+        help="Comma-separated collector names "
+        "(reserved — currently respects config.yaml toggles only)",
+    )
 
     # ---------------------------------------------------------------- doctor
     p_doctor = sub.add_parser("doctor", help="Health check of this HOME")
-    p_doctor.add_argument("--deep", action="store_true",
-                          help="Also probe LLM reachability")
-    p_doctor.add_argument("--json", action="store_true",
-                          help="Machine-readable JSON output")
+    p_doctor.add_argument(
+        "--deep", action="store_true", help="Also probe LLM reachability"
+    )
+    p_doctor.add_argument(
+        "--json", action="store_true", help="Machine-readable JSON output"
+    )
 
     # ------------------------------------------------------- migrate-legacy
-    p_mig = sub.add_parser("migrate-legacy",
-                           help="Copy runtime data from a legacy ~/.local/deep-daily layout")
-    p_mig.add_argument("--from", dest="from_path", type=str, default=None,
-                       help="Legacy source path (default: ~/.local/deep-daily/legacy-data)")
-    p_mig.add_argument("--force", action="store_true",
-                       help="Re-migrate into a target whose manifest is "
-                            "status=completed")
-    p_mig.add_argument("--dry-run", action="store_true",
-                       help="Print the plan; write nothing")
-    p_mig.add_argument("--confirm-near-schedule", action="store_true",
-                       help="Proceed even if we are inside the 06:45-07:15 "
-                            "launchd window")
+    p_mig = sub.add_parser(
+        "migrate-legacy", help="Copy runtime data from a legacy ~/.local/deep-daily layout"
+    )
+    p_mig.add_argument(
+        "--from",
+        dest="from_path",
+        type=str,
+        default=None,
+        help="Legacy source path (default: ~/.local/deep-daily/legacy-data)",
+    )
+    p_mig.add_argument(
+        "--force",
+        action="store_true",
+        help="Re-migrate into a target whose manifest is status=completed",
+    )
+    p_mig.add_argument(
+        "--dry-run", action="store_true", help="Print the plan; write nothing"
+    )
+    p_mig.add_argument(
+        "--confirm-near-schedule",
+        action="store_true",
+        help="Proceed even if we are inside the 06:45-07:15 launchd window",
+    )
 
     return parser
 
@@ -134,9 +169,8 @@ def _run_home_free(cmd: str, args: argparse.Namespace) -> int:
 def _run_home_required(cmd: str, args: argparse.Namespace) -> int:
     from deep_daily.home import HomeConfig, HomeInvalidError, HomeNotFoundError
 
-    allow_walkup = (
-        cmd == "doctor"
-        or (cmd == "run" and getattr(args, "date", None) is not None)
+    allow_walkup = cmd == "doctor" or (
+        cmd == "run" and getattr(args, "date", None) is not None
     )
     try:
         home = HomeConfig.resolve(cli_home=args.home, allow_walkup=allow_walkup)
@@ -144,9 +178,13 @@ def _run_home_required(cmd: str, args: argparse.Namespace) -> int:
         print(f"Error: {err}", file=sys.stderr)
         return 2
 
-    from deep_daily.config import init_runtime
+    # migrate-legacy must see an empty data/ dir (Oracle v3 guard), so we
+    # skip init_runtime scaffolding for that command. The command creates
+    # target subdirs itself as it walks the legacy tree.
+    if cmd != "migrate-legacy":
+        from deep_daily.config import init_runtime
 
-    init_runtime(home)
+        init_runtime(home)
 
     if cmd == "run":
         from deep_daily.commands.run_cmd import cmd_run
