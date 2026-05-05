@@ -5,3 +5,12 @@ dist/
 build/
 .env.local
 data/
+
+# runtime artifacts
+logs/
+bridge_files/
+
+# private overrides (machine-specific, absolute paths, secrets)
+CLAUDE.local.md
+AGENTS.local.md
+.claude.local/
