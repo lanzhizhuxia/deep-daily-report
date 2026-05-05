@@ -69,6 +69,8 @@ class AppConfig:
     tweets_nas_dir: Path
     dailies_dir: Path
     pipeline_dir: Path
+    dailies_dryrun_dir: Path
+    pipeline_dryrun_dir: Path
     profile_path: Path
     active_systems_path: Path
     topics_yaml_path: Path
@@ -106,6 +108,8 @@ def build_app_config(*, data_root: Path, configs_dir: Path) -> AppConfig:
         tweets_nas_dir=root / "tweets-nas",
         dailies_dir=root / "dailies",
         pipeline_dir=root / "dailies" / ".pipeline",
+        dailies_dryrun_dir=root / "dailies-dryrun",
+        pipeline_dryrun_dir=root / "dailies-dryrun" / ".pipeline",
         profile_path=root / "reader-profile.yaml",
         active_systems_path=root / "active-systems.yaml",
         topics_yaml_path=cfg_dir / "topics.yaml",
@@ -317,12 +321,17 @@ def _load_topic_config(
     return config
 
 
-def build_default_reader_from_home() -> ReaderConfig:
+def build_default_reader_from_home(*, dry_run: bool = False) -> ReaderConfig:
     """Construct the single ReaderConfig for this HOME.
 
     Post multi-reader removal (PLAN v2.1 §2.1): one HOME = one reader. Reader
     identity comes from config.yaml (reader.name, reader.notify.*), not from a
     hardcoded id or a readers.yaml file. Paths come from the active runtime.
+
+    When dry_run=True, output_dir and cache_dir point at the isolated
+    ``dailies-dryrun/`` tree (PLAN v2.1 §5.5). This guarantees dry-run writes
+    never touch the prod ``dailies/`` tree and never share step caches with
+    prod — a contract Oracle v2 marked as required.
     """
     runtime = get_runtime()
     raw = runtime.home.raw_config.get("reader", {}) or {}
@@ -333,12 +342,26 @@ def build_default_reader_from_home() -> ReaderConfig:
     dedupe_prefix = notify.get("dedupe_prefix") or f"daily_report_{reader_id}"
     event_id = notify.get("event_id") or "daily_report_ready"
 
+    if dry_run:
+        output_dir = runtime.app.dailies_dryrun_dir
+        # Escalation fallback per PLAN v2.1 §5.5: if the isolated .pipeline/ tree
+        # proves too coupled to prod, set DEEP_DAILY_DRYRUN_DISABLE_CACHE=1 to
+        # route dry-run cache writes to a parallel dead-letter dir that no prod
+        # code path reads from. Wired now; gated behind the env flag.
+        if os.environ.get("DEEP_DAILY_DRYRUN_DISABLE_CACHE"):
+            cache_dir = runtime.app.dailies_dryrun_dir / ".pipeline-disabled"
+        else:
+            cache_dir = runtime.app.pipeline_dryrun_dir
+    else:
+        output_dir = runtime.app.dailies_dir
+        cache_dir = runtime.app.pipeline_dir
+
     return ReaderConfig(
         reader_id=reader_id,
         profile_snippet=_load_reader_profile(),
         topic_config=_load_topic_config(),
-        output_dir=runtime.app.dailies_dir,
-        cache_dir=runtime.app.pipeline_dir,
+        output_dir=output_dir,
+        cache_dir=cache_dir,
         notification={
             "topic_id": topic_id,
             "event_id": event_id,

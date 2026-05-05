@@ -1025,7 +1025,6 @@ def _generate_lightweight_daily(
     materials: List[Dict[str, Any]],
     *,
     output_dir: Path | None = None,
-    reader_id: str | None = None,
 ) -> None:
     """Generate a minimal daily summary when < 3 materials are available."""
     print(f"  Lightweight mode: only {len(materials)} material(s), skipping deep pipeline")
@@ -2024,7 +2023,7 @@ def generate_for_reader(
     if total_lane_materials < 3:
         _generate_lightweight_daily(
             date_str, materials,
-            output_dir=out_dir, reader_id=reader.reader_id,
+            output_dir=out_dir,
         )
         return {"success": True, "reader_id": rid, "lightweight": True}
 
@@ -2137,7 +2136,10 @@ def cmd_generate(args: argparse.Namespace) -> None:
     write_model = args.model or os.environ.get('DAILY_WRITE_MODEL', 'google/gemini-3-pro-preview')
 
     # --- Build reader list (v0.3.0: one HOME = one reader) ---
-    readers = [config.build_default_reader_from_home()]
+    # dry_run flag is introduced in Step 17 (__main__.py). Until then, args may
+    # not carry the attribute — default to False for back-compat.
+    dry_run = getattr(args, "dry_run", False)
+    readers = [config.build_default_reader_from_home(dry_run=dry_run)]
 
     # --- Pre-flight: skip if all outputs exist (single reader, no force/resume) ---
     if len(readers) == 1 and not args.force and not args.resume:
