@@ -1070,7 +1070,7 @@ def _generate_lightweight_daily(
     _atomic_write_json(out_dir / f"{date_str}.json", meta)
 
     # Print Feishu push text
-    url = generate_daily_url(date_str, reader_id=reader_id)
+    url = generate_daily_url(date_str)
     push_lines = [
         f"深度日报 — {date_str}",  # noqa: RUF001
         one_liner,
@@ -1736,8 +1736,7 @@ def step5_publish(
     if not html_path.exists() or html_path.stat().st_size == 0:
         raise RuntimeError(f"HTML output missing or empty: {html_path}")
 
-    reader_id = reader_config.reader_id if reader_config else None
-    url = generate_daily_url(date_str, reader_id=reader_id)
+    url = generate_daily_url(date_str)
 
     topic_lines = "\n".join(f"- {t}" for t in topic_titles)
     push_text = (

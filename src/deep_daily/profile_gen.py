@@ -13,14 +13,12 @@ from deep_daily.config import get_app_config
 from deep_daily.pipeline import _get_llm
 
 
-DEFAULT_SESSION_MEMORY_DIR = "<HOME>/.local/share/session-memory"
 PROFILE_MAX_AGE_SECONDS = 24 * 60 * 60
 CONTEXT_CHAR_LIMIT = 4000
 ACTIVE_DAYS = 30
 TOP_PROJECTS = 12
 MAX_DECISIONS_PER_PROJECT = 3
 MAX_UNFINISHED_ITEMS = 15
-PROFILE_NAME = "<profile>"
 KEYWORD_RE = re.compile(
     r"(crypto|加密|defi|defi|rwa|稳定币|stablecoin|btc|bitcoin|eth|ethereum|sol|"
     r"funding|arb|arbitrage|套利|资金费率|协议|protocol|agent|llm|ai|模型|onchain|链上|twitter)",
@@ -81,6 +79,10 @@ def generate_profile(
     except Exception:
         return False
 
+    from deep_daily.config import get_runtime
+    home = get_runtime().home
+    reader_name = home.reader_name or home.path.name
+
     rendered = _render_profile_yaml(
         role=extracted["role"],
         high_priority=extracted["high_priority"],
@@ -88,14 +90,24 @@ def generate_profile(
         projects=extracted["projects"],
         prompt_snippet=prompt_snippet,
         session_dir=session_root,
+        reader_name=reader_name,
     )
     _atomic_write_text(target_path, rendered)
     return True
 
 
 def _session_memory_dir() -> Path:
-    raw = os.environ.get("SESSION_MEMORY_DIR", DEFAULT_SESSION_MEMORY_DIR)
-    return Path(raw).expanduser()
+    """Resolve session-memory source dir.
+
+    Precedence:
+    1. SESSION_MEMORY_DIR env override (user points at external source)
+    2. <HOME>/data/.session-memory (default, scoped to the active HOME)
+    """
+    env_override = os.environ.get("SESSION_MEMORY_DIR")
+    if env_override:
+        return Path(env_override).expanduser()
+    from deep_daily.config import get_runtime
+    return get_runtime().home.data_dir / ".session-memory"
 
 
 def _extract_profile_inputs(session_dir: Path) -> ProfileInputs:
@@ -341,6 +353,7 @@ def _render_profile_yaml(
     projects: list[str],
     prompt_snippet: str,
     session_dir: Path,
+    reader_name: str,
 ) -> str:
     timestamp = dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     lines = [
@@ -349,7 +362,7 @@ def _render_profile_yaml(
         f"# Source: {session_dir}",
         "",
         "identity:",
-        f"  name: {_yaml_string(PROFILE_NAME)}",
+        f"  name: {_yaml_string(reader_name)}",
         f"  role: {_yaml_string(role)}",
         "",
         "focus:",

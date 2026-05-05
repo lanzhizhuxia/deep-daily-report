@@ -25,9 +25,6 @@ def generate_hmac_url(
     return f"{base}/{path}?token={token}&exp={exp}"
 
 
-def generate_daily_url(date_str: str, reader_id: str | None = None) -> str:
-    if reader_id and reader_id != "david":
-        path = f"daily/{reader_id}/{date_str}"
-    else:
-        path = f"daily/{date_str}"
-    return generate_hmac_url(path)
+def generate_daily_url(date_str: str) -> str:
+    """Build daily digest URL. v0.3.0: one HOME = one reader = one URL path."""
+    return generate_hmac_url(f"daily/{date_str}")

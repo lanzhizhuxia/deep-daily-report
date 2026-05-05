@@ -46,10 +46,7 @@ TITLE_SIM_GRAY_LOW = 0.4
 
 DEFAULT_READER_SNIPPET = "读者是加密货币行业从业者，关注行业整体动态和技术发展。"
 
-DEFAULT_ACTIVE_SYSTEMS = (
-    "RSS pipeline, browser-use automation, LLM daily digest, "
-    "crypto twitter monitoring, Feishu bot, email digest, launchd service management"
-)
+DEFAULT_ACTIVE_SYSTEMS = "daily news digest pipeline"
 
 
 @dataclass

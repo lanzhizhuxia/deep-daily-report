@@ -1,8 +1,8 @@
-"""Deep Daily Report — Full-featured standalone daily digest pipeline.
+"""Deep Daily Report — configurable daily news digest pipeline.
 
-This is the complete self-use edition (ISSUE-201), extracted from
-<legacy-bot>/tools/rss/daily_report.py with all features preserved:
-NAS tweets, news_6551, cross-day dedup, multi-reader support.
+Each deploy has its own HOME directory (``deep-daily init <path>``) holding
+its config, data, caches, and outputs. The tool repo itself is stateless:
+code + templates + docs only.
 
 Extension points:
     - LLMBackend: Pluggable LLM provider (default: OpenAI-compatible HTTP)
@@ -11,4 +11,4 @@ Extension points:
 
 from __future__ import annotations
 
-__version__ = "0.2.0"
+__version__ = "0.3.0-dev"

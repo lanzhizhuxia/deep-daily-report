@@ -39,9 +39,10 @@ def main() -> None:
     )
     gen_parser.add_argument(
         "--llm-backend",
-        choices=["openai", "multikey"],
+        choices=["openai", "multikey", "david"],
         default="openai",
-        help="LLM backend implementation (multikey = round-robin across multiple keys)",
+        help="LLM backend implementation (multikey = round-robin across multiple keys). "
+        "'david' is a deprecated alias for 'multikey' retained for legacy scripts.",
     )
     gen_parser.add_argument(
         "--publisher",
@@ -77,10 +78,15 @@ def _dispatch_generate(args: argparse.Namespace) -> None:
     from deep_daily.profile_gen import maybe_refresh_profile
     from deep_daily.publishers.file_publisher import FilePublisher
 
-    if args.llm_backend == "multikey":
-        from deep_daily.backends.david_multikey import DavidMultiKeyBackend
+    if args.llm_backend in ("multikey", "david"):
+        if args.llm_backend == "david":
+            print(
+                "Warning: --llm-backend david is deprecated; use --llm-backend multikey.",
+                file=sys.stderr,
+            )
+        from deep_daily.backends.litellm_multikey import LiteLLMMultiKeyBackend
 
-        llm = DavidMultiKeyBackend(api_base=os.environ.get("LITELLM_API_BASE"))
+        llm = LiteLLMMultiKeyBackend(api_base=os.environ.get("LITELLM_API_BASE"))
     else:
         llm = OpenAICompatibleBackend(
             api_base=os.environ.get("LLM_API_BASE")
