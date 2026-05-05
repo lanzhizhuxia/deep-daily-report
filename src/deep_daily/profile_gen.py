@@ -44,7 +44,10 @@ def maybe_refresh_profile(*, max_age_seconds: int = PROFILE_MAX_AGE_SECONDS) -> 
 
     profile_path = get_app_config().profile_path
     try:
-        if profile_path.exists() and time.time() - profile_path.stat().st_mtime < max_age_seconds:
+        if (
+            profile_path.exists()
+            and time.time() - profile_path.stat().st_mtime < max_age_seconds
+        ):
             return False
     except OSError:
         pass
@@ -55,12 +58,20 @@ def maybe_refresh_profile(*, max_age_seconds: int = PROFILE_MAX_AGE_SECONDS) -> 
         return False
 
 
-def generate_profile(*, session_dir: Path | None = None, profile_path: Path | None = None) -> bool:
-    session_root = Path(session_dir) if session_dir is not None else _session_memory_dir()
+def generate_profile(
+    *, session_dir: Path | None = None, profile_path: Path | None = None
+) -> bool:
+    session_root = (
+        Path(session_dir) if session_dir is not None else _session_memory_dir()
+    )
     if not session_root.is_dir():
         return False
 
-    target_path = Path(profile_path) if profile_path is not None else get_app_config().profile_path
+    target_path = (
+        Path(profile_path)
+        if profile_path is not None
+        else get_app_config().profile_path
+    )
     extracted = _extract_profile_inputs(session_root)
     if not extracted["context"]:
         return False
@@ -90,28 +101,57 @@ def _session_memory_dir() -> Path:
 def _extract_profile_inputs(session_dir: Path) -> ProfileInputs:
     work_lines = _read_work_identity(session_dir / "工作画像.md")
     active_projects = _read_active_projects(session_dir / "项目时间线.md")
-    project_decisions = _read_project_decisions(session_dir / "决策日志.md", active_projects)
+    weekly_projects = _read_weekly_projects(session_dir / "本周重点.md")
+    project_decisions = _read_project_decisions(
+        session_dir / "决策日志.md", active_projects + weekly_projects
+    )
     unfinished = _read_unfinished_threads(session_dir / "未完成线索.md")
 
     role = _extract_role(work_lines)
-    project_names = [p["name"] for p in active_projects]
 
-    high_priority = project_names[:6]
-    medium_priority = project_names[6:TOP_PROJECTS]
+    all_project_names = _dedupe_keep_order(
+        [p["name"] for p in active_projects] + [p["name"] for p in weekly_projects]
+    )
+    all_project_names = [n for n in all_project_names if n.lower() != "unknown"][
+        :TOP_PROJECTS
+    ]
+
+    high_priority = all_project_names[:6]
+    medium_priority = all_project_names[6:TOP_PROJECTS]
 
     context_parts = []
-    context_parts.append("身份与工作背景:\n" + "\n".join(f"- {l}" for l in work_lines[:10]))
-    context_parts.append(
-        "最近30天活跃项目 (按活跃度排序):\n"
-        + "\n".join(f"- {p['name']} ({p['sessions']} sessions)" for p in active_projects)
-    )
+    if work_lines:
+        context_parts.append(
+            "身份与工作背景:\n" + "\n".join(f"- {l}" for l in work_lines[:10])
+        )
+
+    if active_projects:
+        context_parts.append(
+            "最近30天活跃项目 (按活跃度排序):\n"
+            + "\n".join(
+                f"- {p['name']} ({p['sessions']} sessions)" for p in active_projects
+            )
+        )
+
+    weekly_file = session_dir / "本周重点.md"
+    if weekly_file.exists():
+        weekly_text = _read_weekly_summary(weekly_file)
+        if weekly_text:
+            context_parts.append(f"本周重点:\n{weekly_text}")
+
     if project_decisions:
         context_parts.append(
             "各项目关键决策:\n"
-            + "\n".join(f"- [{proj}] {d}" for proj, decisions in project_decisions.items() for d in decisions)
+            + "\n".join(
+                f"- [{proj}] {d}"
+                for proj, decisions in project_decisions.items()
+                for d in decisions
+            )
         )
     if unfinished:
-        context_parts.append("当前未完成线索:\n" + "\n".join(f"- {l}" for l in unfinished))
+        context_parts.append(
+            "当前未完成线索:\n" + "\n".join(f"- {l}" for l in unfinished)
+        )
 
     context = "\n\n".join(context_parts)
     if len(context) > CONTEXT_CHAR_LIMIT:
@@ -119,7 +159,7 @@ def _extract_profile_inputs(session_dir: Path) -> ProfileInputs:
 
     return {
         "role": role,
-        "projects": project_names,
+        "projects": all_project_names,
         "high_priority": high_priority,
         "medium_priority": medium_priority,
         "context": context,
@@ -135,7 +175,8 @@ def _read_work_identity(path: Path) -> list[str]:
         for raw in f:
             line = raw.rstrip("\n")
             if not in_section:
-                if line.strip().startswith("## 其他"):
+                stripped = line.strip()
+                if stripped.startswith("## 核心画像") or stripped.startswith("## 其他"):
                     in_section = True
                 continue
             if line.startswith("## "):
@@ -172,12 +213,16 @@ def _read_active_projects(path: Path) -> list[dict[str, Any]]:
             and current_project
             and line.strip().startswith("- ")
         ):
-            project_sessions[current_project] = project_sessions.get(current_project, 0) + 1
+            project_sessions[current_project] = (
+                project_sessions.get(current_project, 0) + 1
+            )
     ranked = sorted(project_sessions.items(), key=lambda x: -x[1])
     return [{"name": name, "sessions": count} for name, count in ranked[:TOP_PROJECTS]]
 
 
-def _read_project_decisions(path: Path, active_projects: list[dict[str, Any]]) -> dict[str, list[str]]:
+def _read_project_decisions(
+    path: Path, active_projects: list[dict[str, Any]]
+) -> dict[str, list[str]]:
     if not path.exists():
         return {}
     active_names = {p["name"] for p in active_projects}
@@ -196,6 +241,36 @@ def _read_project_decisions(path: Path, active_projects: list[dict[str, Any]]) -
                 if len(result[current_project]) < MAX_DECISIONS_PER_PROJECT:
                     result[current_project].append(cleaned)
     return result
+
+
+def _read_weekly_projects(path: Path) -> list[dict[str, Any]]:
+    if not path.exists():
+        return []
+    project_counts: dict[str, int] = {}
+    bracket_re = re.compile(r"^\s*-\s*\[([^\]]+)\]")
+    with path.open(encoding="utf-8") as f:
+        for raw in f:
+            m = bracket_re.match(raw)
+            if m:
+                name = m.group(1).strip()
+                if name and name != "unknown" and name != "Unknown":
+                    project_counts[name] = project_counts.get(name, 0) + 1
+    ranked = sorted(project_counts.items(), key=lambda x: -x[1])
+    return [{"name": name, "sessions": count} for name, count in ranked]
+
+
+def _read_weekly_summary(path: Path) -> str:
+    lines: list[str] = []
+    with path.open(encoding="utf-8") as f:
+        for raw in f:
+            line = raw.rstrip("\n")
+            if line.startswith("<!--") or line.startswith("# "):
+                continue
+            if line.strip():
+                lines.append(line)
+            if len(lines) >= 30:
+                break
+    return "\n".join(lines)
 
 
 def _read_unfinished_threads(path: Path) -> list[str]:
@@ -217,6 +292,9 @@ def _read_unfinished_threads(path: Path) -> list[str]:
 
 def _extract_role(work_lines: list[str]) -> str:
     for line in work_lines:
+        match = re.search(r"角色[:：]\s*(.+)", line)
+        if match:
+            return match.group(1).strip()
         match = re.search(r"用户是([^，。；—]+)", line)
         if match:
             return match.group(1).strip()
@@ -239,7 +317,10 @@ def _generate_prompt_snippet(extracted_context: str) -> str:
     )
     content = _get_llm().chat(
         [
-            {"role": "system", "content": "You write concise reader profiles for relevance ranking."},
+            {
+                "role": "system",
+                "content": "You write concise reader profiles for relevance ranking.",
+            },
             {"role": "user", "content": prompt},
         ],
         model=model,
@@ -345,7 +426,9 @@ def _dedupe_keep_order(values: list[str]) -> list[str]:
 
 def _atomic_write_text(path: Path, content: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    with tempfile.NamedTemporaryFile("w", encoding="utf-8", delete=False, dir=path.parent) as handle:
+    with tempfile.NamedTemporaryFile(
+        "w", encoding="utf-8", delete=False, dir=path.parent
+    ) as handle:
         handle.write(content)
         tmp_path = Path(handle.name)
     tmp_path.replace(path)

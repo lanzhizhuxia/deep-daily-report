@@ -18,15 +18,60 @@ def main() -> None:
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     gen_parser = subparsers.add_parser("generate", help="Generate deep daily digest")
-    gen_parser.add_argument("--date", type=str, default=None, help="Target date in YYYY-MM-DD format (default: today)")
-    gen_parser.add_argument("--force", action="store_true", help="Ignore cache, regenerate from scratch")
-    gen_parser.add_argument("--resume", action="store_true", help="Resume from cached pipeline steps")
-    gen_parser.add_argument("--model", type=str, default=None, help="Override Step 3 write model (default: DAILY_WRITE_MODEL env or google/gemini-3-pro-preview)")
-    gen_parser.add_argument("--readers", type=str, default=None, help="Path to readers.yaml for multi-reader mode")
-    gen_parser.add_argument("--reader-id", type=str, default=None, help="Run only this reader (requires --readers)")
-    gen_parser.add_argument("--data-root", type=str, default=None, help="Override data root (default: ~/.local/deep-daily/legacy-data)")
-    gen_parser.add_argument("--configs-dir", type=str, default=None, help="Override configs dir (default: package configs/)")
-    gen_parser.add_argument("--llm-backend", choices=["openai", "david"], default="openai", help="LLM backend implementation")
+    gen_parser.add_argument(
+        "--date",
+        type=str,
+        default=None,
+        help="Target date in YYYY-MM-DD format (default: today)",
+    )
+    gen_parser.add_argument(
+        "--force", action="store_true", help="Ignore cache, regenerate from scratch"
+    )
+    gen_parser.add_argument(
+        "--resume", action="store_true", help="Resume from cached pipeline steps"
+    )
+    gen_parser.add_argument(
+        "--model",
+        type=str,
+        default=None,
+        help="Override Step 3 write model (default: DAILY_WRITE_MODEL env or google/gemini-3-pro-preview)",
+    )
+    gen_parser.add_argument(
+        "--readers",
+        type=str,
+        default=None,
+        help="Path to readers.yaml for multi-reader mode",
+    )
+    gen_parser.add_argument(
+        "--reader-id",
+        type=str,
+        default=None,
+        help="Run only this reader (requires --readers)",
+    )
+    gen_parser.add_argument(
+        "--data-root",
+        type=str,
+        default=None,
+        help="Override data root (default: ~/.local/deep-daily/legacy-data)",
+    )
+    gen_parser.add_argument(
+        "--configs-dir",
+        type=str,
+        default=None,
+        help="Override configs dir (default: package configs/)",
+    )
+    gen_parser.add_argument(
+        "--llm-backend",
+        choices=["openai", "david"],
+        default="openai",
+        help="LLM backend implementation",
+    )
+    gen_parser.add_argument(
+        "--publisher",
+        choices=["file", "feishu"],
+        default="file",
+        help="Publish channel (file=local HTML only, feishu=push card via NotificationHub)",
+    )
 
     args = parser.parse_args()
 
@@ -35,15 +80,29 @@ def main() -> None:
             DavidMultiKeyBackend(api_base=os.environ.get("LITELLM_API_BASE"))
             if args.llm_backend == "david"
             else OpenAICompatibleBackend(
-                api_base=os.environ.get("LLM_API_BASE") or os.environ.get("LITELLM_API_BASE"),
-                api_key=os.environ.get("LLM_API_KEY") or os.environ.get("LITELLM_API_KEY"),
+                api_base=os.environ.get("LLM_API_BASE")
+                or os.environ.get("LITELLM_API_BASE"),
+                api_key=os.environ.get("LLM_API_KEY")
+                or os.environ.get("LITELLM_API_KEY"),
             )
         )
+        pub = FilePublisher()
+        if args.publisher == "feishu":
+            try:
+                from tools.rss.feishu_publisher import FeishuPublisher
+
+                pub = FeishuPublisher()
+            except ImportError:
+                print(
+                    "Warning: FeishuPublisher not available (tools.rss.feishu_publisher not on PYTHONPATH), falling back to FilePublisher"
+                )
         configure(
             llm=llm,
-            publisher=FilePublisher(),
+            publisher=pub,
             data_root=Path(args.data_root).expanduser() if args.data_root else None,
-            configs_dir=Path(args.configs_dir).expanduser() if args.configs_dir else None,
+            configs_dir=Path(args.configs_dir).expanduser()
+            if args.configs_dir
+            else None,
         )
         maybe_refresh_profile()
         cmd_generate(args)
