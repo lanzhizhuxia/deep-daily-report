@@ -33,4 +33,5 @@ markers = [
     "hard_gate_1: bootstrap correctness (import safety + double init)",
     "hard_gate_2: path and cache discipline (identity grep + dry-run isolation)",
     "hard_gate_3: end-to-end smoke",
+    "slow: longer-running integration and collision tests",
 ]
