@@ -9,7 +9,7 @@ from deep_daily.backup.errors import BackupNetworkError
 
 logger = logging.getLogger("deep_daily.backup.retention")
 
-ARCHIVE_NAME_RE = re.compile(r"^<INSTANCE_NAME>-\d{8}-\d{6}Z\.tar\.gz$")
+ARCHIVE_NAME_RE = re.compile(r"^m4-deep-daily-\d{8}-\d{6}Z\.tar\.gz$")
 
 
 def select_prune_candidates(files: list[str], keep_n: int) -> list[str]:

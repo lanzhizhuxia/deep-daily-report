@@ -20,7 +20,7 @@ def cmd_backup(args: argparse.Namespace, home: HomeConfig) -> int:
     try:
         config = load_backup_config(home)
         retention = int(getattr(args, "retention", None) or config.retention)
-        archive_name = f"<INSTANCE_NAME>-{archive_timestamp()}.tar.gz"
+        archive_name = f"m4-deep-daily-{archive_timestamp()}.tar.gz"
         state_dir = backup_state_dir(home)
         source_dir = home.path
         ssh_target = f"{config.nas_user}@{config.nas_host}"

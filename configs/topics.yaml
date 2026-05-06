@@ -21,7 +21,7 @@ pinned:
       - "coding AI"
     keywords:
       # --- Project-specific ---
-      - "<legacy-bot>"
+      - "davidbot"
       - "nanobot"
       - "opencode"
       - "launchd"

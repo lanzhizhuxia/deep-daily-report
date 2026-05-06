@@ -86,7 +86,7 @@ def list_stale_remote_parts(
 ) -> list[str]:
     cmd = (
         f"find {shlex.quote(remote_dir)} -maxdepth 1 -type f "
-        f"-name '<INSTANCE_NAME>-*.tar.gz.part' -mmin +{stale_age_hours * 60} -print"
+        f"-name 'm4-deep-daily-*.tar.gz.part' -mmin +{stale_age_hours * 60} -print"
     )
     result = run_ssh_command(
         ssh_target=ssh_target,

@@ -30,7 +30,7 @@ def test_upload_hashes_part_before_rename(monkeypatch, tmp_path):
 
     remote_path, remote_sha = upload_archive(
         archive_path=archive,
-        archive_name="<INSTANCE_NAME>-20260505-030000Z.tar.gz",
+        archive_name="m4-deep-daily-20260505-030000Z.tar.gz",
         ssh_target="root@example",
         ssh_options=("BatchMode=yes",),
         remote_dir="/remote/base",
@@ -39,7 +39,7 @@ def test_upload_hashes_part_before_rename(monkeypatch, tmp_path):
     )
 
     assert remote_sha == "abc123"
-    assert remote_path.endswith("<INSTANCE_NAME>-20260505-030000Z.tar.gz")
+    assert remote_path.endswith("m4-deep-daily-20260505-030000Z.tar.gz")
     assert calls[1][-1].endswith(".part'") or ".part" in calls[1][-1]
     assert calls[2][-1].startswith("sha256sum")
     assert calls[3][-1].startswith("mv ")
@@ -64,7 +64,7 @@ def test_upload_mismatch_raises_exit_3(monkeypatch, tmp_path):
     with pytest.raises(BackupChecksumMismatchError) as exc:
         upload_archive(
             archive_path=archive,
-            archive_name="<INSTANCE_NAME>-20260505-030000Z.tar.gz",
+            archive_name="m4-deep-daily-20260505-030000Z.tar.gz",
             ssh_target="root@example",
             ssh_options=("BatchMode=yes",),
             remote_dir="/remote/base",
