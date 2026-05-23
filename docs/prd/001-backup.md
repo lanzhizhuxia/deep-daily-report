@@ -1,7 +1,7 @@
 # PRD 001: NAS Backup Migration
 
 > Status: **DRAFT v2.1** — scope expanded from `<HOME>/data/` to full HOME after Phase 1b wet-run findings; Oracle reconsult approved (bg_aeba6353)
-> Author: sam-code session 2026-05-05
+> Author: [maintainer]
 > Reviewed by: Oracle (ses_207ff0be0ffeWE2VDjoq0iO47b → ses_207f5a226ffeXVDlqhMs4XQ3G7 → bg_aeba6353)
 > Related: ISSUE-095 (HOME migration); supersedes `<legacy-bot>/scripts/data-backup.sh`
 
@@ -185,7 +185,7 @@ Env overrides (honor existing from <legacy-bot> for zero-friction migration):
 {
   "pid": 52847,
   "started_ts": "2026-05-05T03:30:00Z",
-  "host": "M4.local",
+  "host": "<hostname>",
   "command": "deep_daily backup"
 }
 ```
