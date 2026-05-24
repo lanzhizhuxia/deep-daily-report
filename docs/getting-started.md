@@ -60,9 +60,24 @@ Walk-up only activates for `doctor` and `run --date <YYYY-MM-DD>`. For scheduled
 runs (launchd/cron) **always** set `DEEP_DAILY_HOME` or pass `--home` — see
 [scheduling.md](scheduling.md).
 
-## 3. Fill in credentials and config
+## 3. Set up LLM access
 
-Edit `~/.my-daily/.env` — at minimum, set `LLM_API_BASE` and `LLM_API_KEY`.
+deep-daily needs an OpenAI-compatible LLM endpoint. If you don't have one
+yet, read **[llm-setup.md](llm-setup.md)** for step-by-step instructions
+covering OpenRouter (fastest start), local LiteLLM proxy (production), and
+direct API keys.
+
+At minimum, edit `~/.my-daily/.env`:
+
+```bash
+LLM_API_BASE=https://openrouter.ai/api/v1    # or your own endpoint
+LLM_API_KEY=sk-or-v1-your-key-here
+```
+
+Then edit `config.yaml` to select models for each pipeline step (the defaults
+work out of the box for most setups).
+
+### Fill in business config
 
 Edit `~/.my-daily/configs/*.yaml` to define:
 

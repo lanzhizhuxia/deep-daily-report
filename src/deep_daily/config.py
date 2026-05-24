@@ -64,10 +64,10 @@ DEFAULT_ACTIVE_SYSTEMS = "daily news digest pipeline"
 # config.yaml.tmpl mirrors these values for user visibility, but code owns the
 # truth. Do not duplicate literals across sites — always read from here.
 DEFAULT_MODELS: dict[str, str] = {
-    "filter": "google/gemini-2.5-flash-lite",
-    "cluster": "google/gemini-2.5-flash-lite",
-    "write": "google/gemini-3-pro-preview",
-    "appendix": "openai/gpt-4.1-nano",
+    "filter": "deepseek-v4-flash",
+    "cluster": "deepseek-v4-flash",
+    "write": "gemini-3.1-pro-preview",
+    "appendix": "gpt-5.4-mini",
 }
 
 

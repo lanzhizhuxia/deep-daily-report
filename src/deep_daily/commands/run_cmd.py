@@ -43,9 +43,8 @@ def _resolve_llm_backend(home: HomeConfig, cli_override: str | None):
         from deep_daily.backends.openai_compat import OpenAICompatibleBackend
 
         return OpenAICompatibleBackend(
-            api_base=os.environ.get("LLM_API_BASE")
-            or os.environ.get("LITELLM_API_BASE"),
-            api_key=os.environ.get("LLM_API_KEY") or os.environ.get("LITELLM_API_KEY"),
+            api_base=os.environ.get("LLM_API_BASE"),
+            api_key=os.environ.get("LLM_API_KEY"),
         )
 
     raise RuntimeError(

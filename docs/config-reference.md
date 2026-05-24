@@ -31,24 +31,30 @@ instance:
 ### `models` (mapping)
 
 Per-step model IDs. These are forwarded verbatim to the LLM backend. Use
-OpenAI-style IDs; the multikey backend uses the same format.
+OpenAI-style IDs; the multikey backend uses the same format. Whether you need
+provider prefixes (`google/`, `openai/`, `deepseek/`) depends on your LLM
+endpoint — see [llm-setup.md](llm-setup.md) for details.
 
 ```yaml
 models:
-  filter: "google/gemini-2.5-flash-lite"    # Step 1: topic relevance filter
-  cluster: "google/gemini-2.5-flash-lite"   # Step 2: event clustering
-  write: "google/gemini-3-pro-preview"      # Step 3: long-form write
-  appendix: "openai/gpt-4.1-nano"           # Step 4: appendix generation
+  filter: "deepseek-v4-flash"               # Step 1: topic relevance filter
+  cluster: "deepseek-v4-flash"              # Step 2: event clustering
+  write: "gemini-3.1-pro-preview"           # Step 3: long-form write
+  appendix: "gpt-5.4-mini"                  # Step 4: appendix generation
 ```
+
+> If using OpenRouter directly, add provider prefixes:
+> `deepseek/deepseek-v4-flash`, `google/gemini-3.1-pro-preview`,
+> `openai/gpt-5.4-mini`.
 
 **Resolution precedence** (first non-empty wins):
 
 | Slot      | 1. CLI          | 2. Env var              | 3. `config.yaml`   | 4. Built-in default                 |
 |-----------|-----------------|-------------------------|--------------------|-------------------------------------|
-| write     | `--model <id>`  | `DAILY_WRITE_MODEL`     | `models.write`     | `google/gemini-3-pro-preview`       |
-| filter    | _(no flag)_     | `DAILY_FILTER_MODEL`    | `models.filter`    | `google/gemini-2.5-flash-lite`      |
-| cluster   | _(no flag)_     | `DAILY_CLUSTER_MODEL`   | `models.cluster`   | `google/gemini-2.5-flash-lite`      |
-| appendix  | _(no flag)_     | `DAILY_APPENDIX_MODEL`  | `models.appendix`  | `openai/gpt-4.1-nano`               |
+| write     | `--model <id>`  | `DAILY_WRITE_MODEL`     | `models.write`     | `gemini-3.1-pro-preview`            |
+| filter    | _(no flag)_     | `DAILY_FILTER_MODEL`    | `models.filter`    | `deepseek-v4-flash`                 |
+| cluster   | _(no flag)_     | `DAILY_CLUSTER_MODEL`   | `models.cluster`   | `deepseek-v4-flash`                 |
+| appendix  | _(no flag)_     | `DAILY_APPENDIX_MODEL`  | `models.appendix`  | `gpt-5.4-mini`                      |
 
 Built-in defaults are the source of truth, defined in
 `deep_daily.config.DEFAULT_MODELS`. The template mirrors them for visibility,
@@ -57,6 +63,21 @@ built-in default — you only need to list slots you want to override.
 
 Env vars remain supported as runtime overrides (e.g. for A/B testing one
 pipeline stage without editing `config.yaml`).
+
+#### Model Selection Guide
+
+Each pipeline step has different requirements. Here's why the defaults are
+chosen the way they are:
+
+| Step     | Calls per run | Tokens per call | Priority              | Recommended Model        |
+|----------|---------------|-----------------|-----------------------|--------------------------|
+| filter   | hundreds      | ~500            | Speed + cost          | `deepseek-v4-flash`      |
+| cluster  | tens          | ~3,000          | Semantic understanding | `deepseek-v4-flash`      |
+| write    | 1             | 20k–50k         | Long-form quality     | `gemini-3.1-pro-preview` |
+| appendix | 1             | ~500            | Cheapest possible     | `gpt-5.4-mini`           |
+
+For detailed LLM setup instructions (OpenRouter, local LiteLLM proxy, direct
+API keys) and cost comparisons, see [llm-setup.md](llm-setup.md).
 
 ### `llm` (mapping)
 

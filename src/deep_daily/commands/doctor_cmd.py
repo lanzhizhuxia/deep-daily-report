@@ -55,10 +55,19 @@ class CheckResult:
     detail: str | None = None
 
 
-DEFAULT_REQUIRED_ENV = ("LLM_API_BASE", "LLM_API_KEY")
+# Per-backend required env vars. When config.yaml has llm.backend, only the
+# matching set is enforced; omitted vars are treated as optional.
+_BACKEND_REQUIRED_ENV: dict[str, tuple[str, ...]] = {
+    "openai": ("LLM_API_BASE", "LLM_API_KEY"),
+    "multikey": ("LITELLM_API_BASE",),
+}
+
 DEFAULT_OPTIONAL_ENV = (
+    "LLM_API_BASE",
+    "LLM_API_KEY",
     "LITELLM_API_BASE",
     "LITELLM_API_KEY",
+    "LITELLM_API_KEYS",
     "OPENNEWS_TOKEN",
     "FEISHU_WEBHOOK",
     "RSS_SERVER_BASE",
@@ -189,7 +198,15 @@ def _check_config_schema(home: HomeConfig) -> list[CheckResult]:
         )
 
     backend = str(raw.get("llm", {}).get("backend") or "").strip()
-    if backend not in ("openai", "multikey"):
+    if backend == "david":
+        results.append(
+            CheckResult(
+                "config.llm.backend",
+                SEVERITY_WARN,
+                "llm.backend=david is deprecated; switch to multikey",
+            )
+        )
+    elif backend not in ("openai", "multikey"):
         results.append(
             CheckResult(
                 "config.llm.backend",
@@ -243,36 +260,52 @@ def _check_env_vars(
     results: list[CheckResult] = []
     raw = home.raw_config
     doctor_section = raw.get("doctor") or {}
-    required = tuple(doctor_section.get("required_env") or DEFAULT_REQUIRED_ENV)
+    backend = str(raw.get("llm", {}).get("backend") or "openai").strip()
+
+    required = tuple(
+        doctor_section.get("required_env")
+        or _BACKEND_REQUIRED_ENV.get(backend, ("LLM_API_BASE", "LLM_API_KEY"))
+    )
     optional = tuple(doctor_section.get("optional_env") or DEFAULT_OPTIONAL_ENV)
 
-    # LITELLM_* counts as a satisfying alias for LLM_* per backends/litellm_multikey.py.
-    for name in required:
-        value = getenv(name)
-        if value:
-            results.append(CheckResult(f"env.{name}", SEVERITY_OK, "set"))
-            continue
-        alias = None
-        if name == "LLM_API_BASE":
-            alias = "LITELLM_API_BASE"
-        elif name == "LLM_API_KEY":
-            alias = "LITELLM_API_KEY"
-        if alias and getenv(alias):
-            results.append(
-                CheckResult(
-                    f"env.{name}",
-                    SEVERITY_OK,
-                    f"satisfied via {alias}",
+    # multikey backend needs at least one key source beyond just LITELLM_API_BASE.
+    _multikey_key_vars = ("LITELLM_API_KEYS", "LITELLM_API_KEY")
+    if backend == "multikey":
+        have_key = any(getenv(v) for v in _multikey_key_vars)
+        for name in required:
+            value = getenv(name)
+            if value:
+                results.append(CheckResult(f"env.{name}", SEVERITY_OK, "set"))
+            else:
+                results.append(
+                    CheckResult(
+                        f"env.{name}",
+                        SEVERITY_ERROR,
+                        "required env var is not set",
+                    )
                 )
-            )
-        else:
+        if not have_key:
             results.append(
                 CheckResult(
-                    f"env.{name}",
+                    "env.LITELLM_API_KEYS",
                     SEVERITY_ERROR,
-                    "required env var is not set",
+                    "multikey backend needs LITELLM_API_KEYS or LITELLM_API_KEY",
                 )
             )
+    else:
+        # openai: no LITELLM_* alias fallback — must have LLM_* directly.
+        for name in required:
+            value = getenv(name)
+            if value:
+                results.append(CheckResult(f"env.{name}", SEVERITY_OK, "set"))
+            else:
+                results.append(
+                    CheckResult(
+                        f"env.{name}",
+                        SEVERITY_ERROR,
+                        "required env var is not set",
+                    )
+                )
 
     for name in optional:
         value = getenv(name)
@@ -503,14 +536,26 @@ def _check_kb(home: HomeConfig) -> list[CheckResult]:
 def _check_llm_deep(
     home: HomeConfig, *, getenv: Callable[[str], str | None] = os.environ.get
 ) -> list[CheckResult]:
-    api_base = getenv("LLM_API_BASE") or getenv("LITELLM_API_BASE")
-    api_key = getenv("LLM_API_KEY") or getenv("LITELLM_API_KEY")
+    backend = str(home.raw_config.get("llm", {}).get("backend") or "openai").strip()
+    if backend == "multikey":
+        api_base = getenv("LITELLM_API_BASE")
+        api_key = getenv("LITELLM_API_KEY") or next(
+            (getenv(v) for v in ("LITELLM_API_KEYS",) if getenv(v)), None
+        )
+    else:
+        api_base = getenv("LLM_API_BASE")
+        api_key = getenv("LLM_API_KEY")
     if not (api_base and api_key):
+        hint = (
+            "LITELLM_API_BASE + LITELLM_API_KEY"
+            if backend == "multikey"
+            else "LLM_API_BASE + LLM_API_KEY"
+        )
         return [
             CheckResult(
                 "llm.probe",
                 SEVERITY_WARN,
-                "skipped: LLM_API_BASE / LLM_API_KEY not set",
+                f"skipped: {hint} not set",
             )
         ]
     try:
